@@ -1,0 +1,7 @@
+syntax: glob
+.DS_Store
+testbed
+testbed/main\.lua
+testproject/WidgetDemo
+nextversion-todo\.txt
+\.hgignore
