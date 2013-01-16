@@ -28,17 +28,40 @@ package.preload.transition = nil
 local isPause = false
 local transitionNew = require("transition")
 
-local buttonrect = display.newRect(1,1,display.contentWidth,display.contentHeight)
-buttonrect:setFillColor(255,0,0)
+local w = 0.5*display.contentWidth
+local h = 0.5*display.contentHeight
+local r1 = display.newRect(1,1, w, h)
+r1:setFillColor(255,0,0)
 local executions = 0
-local t1 = transitionNew.to( buttonrect, { alpha = 0.2, time = 3000, transition = easing.inOutQuad})
+
+local delay = 0
+local function onComplete( self )
+	self.alpha = 1
+
+	self.t = nil
+	local t = transitionNew.to( self,
+		{ alpha = 0, time = 3000, delay = delay, transition = easing.inOutQuad, onComplete=self} )
+
+	self.t = t
+	delay = delay + 10
+end
+
+local r2 = display.newRect( w, h, w, h )
+r2:setFillColor( 0, 255, 0)
+r1.onComplete = onComplete
+r2.onComplete = onComplete
 
 function touchHandler (event)
 	if (event.phase == "began") then
-		transitionNew.cancel( t1 )
+		transitionNew.cancel( event.target.t )
 		print( "Cancelled!")
 	end
 end
 
+r1:addEventListener("touch", touchHandler)
+r2:addEventListener("touch", touchHandler)
 
-buttonrect:addEventListener("touch", touchHandler)
+-- Starts the repeating transition. Each time the transition completes, 
+-- it restarts with an increasing delay
+r1:onComplete()
+r2:onComplete()

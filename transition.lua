@@ -6,7 +6,19 @@
 --
 -------------------------------------------------------------------------------
 
-print( "foo ************")
+-- copies all key/value pairs
+local function copyTable( src )
+	local t = {}
+
+	for k,v in pairs( src ) do
+		t[k] = v
+	end
+
+	return t
+end
+
+-------------------------------------------------------------------------------
+
 -- NOTE: transition is assigned to the global var "transition" in init.lua.
 -- This file should follos standard Lua module conventions
 local transition = { _activeTweens = {} }
