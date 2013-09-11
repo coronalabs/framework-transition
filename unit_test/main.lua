@@ -58,8 +58,22 @@ function touchHandler (event)
 	end
 end
 
+function touchHandlerPause (event)
+	if (event.phase == "began") then
+		if false == isPause then
+		transitionNew.pause( event.target.t )
+		print( "Paused!" )
+		isPause = true
+		elseif true == isPause then
+		transitionNew.resume ( event.target.t )
+		print( "Resumed!" )
+		isPause = false
+		end
+	end
+end
+
 r1:addEventListener("touch", touchHandler)
-r2:addEventListener("touch", touchHandler)
+r2:addEventListener("touch", touchHandlerPause)
 
 -- Starts the repeating transition. Each time the transition completes, 
 -- it restarts with an increasing delay
