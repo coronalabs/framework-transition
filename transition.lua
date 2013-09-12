@@ -589,6 +589,7 @@ transitionLibrary.enterFrame = function( event )
 	-- TODO: Should also unregister when there are only paused transitions
 	if #transitionLibrary._transitionTable == 0 then
 		Runtime:removeEventListener("enterFrame", transitionLibrary.enterFrame)
+		transitionLibrary._didAddRuntimeListener = false
 	end
 end
 
