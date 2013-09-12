@@ -130,8 +130,9 @@ local function _dispatchControlEvent( targetObject, controlEvent )
 	if nil == targetObject[ controlEvent ] then
 		return
 	end
+	
 	-- if it does, execute it, sending the object as event (so we can use event.target)
-	targetObject[ controlEvent ]( targetObject )
+	targetObject[ controlEvent ]( targetObject.target, targetObject )
 end
 
 -----------------------------------------------------------------------------------------
