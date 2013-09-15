@@ -550,7 +550,7 @@ transitionLibrary.enterFrame = function( event )
 				-- iterate the transition parameters and modify their values accordingly
 				for i, x in pairs( currentTargetParams ) do
 					-- calculate the diff factor (transition progress, values between 0 and 1) based on the easing
-					local diff = currentEasing( passedTimeInterval, 0, 1, currentTargetTime )
+					local diff = currentEasing( passedTimeInterval, currentTargetTime, 0, 1 )
 
 					local newPropertyValue = ( ( x - currentSourceParams[ i ] ) * diff ) + currentSourceParams[ i ]
 					
