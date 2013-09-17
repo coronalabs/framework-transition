@@ -35,7 +35,7 @@ transitionLibrary._reservedProperties = {"time", "delay", "delta", "iterations",
 -----------------------------------------------------------------------------------------
 -- local functions
 -----------------------------------------------------------------------------------------
- 
+
 -----------------------------------------------------------------------------------------
 -- _deepCopyObjectParameters( sourceObject, sourceParams, withDelta )
 -- copies all the parameters of an object to a table it returns, with filtering of 
@@ -553,12 +553,12 @@ transitionLibrary.enterFrame = function( event )
 				for i, x in pairs( currentTargetParams ) do
 					-- calculate the diff factor (transition progress, values between 0 and 1) based on the easing					
 					local diff = currentEasing( passedTimeInterval, currentTargetTime, 0, 1 )
-
-					local newPropertyValue = ( ( x - currentSourceParams[ i ] ) * diff ) + currentSourceParams[ i ]
 					
 					-- assign the new value to the current parameter
-					currentTarget[ i ] = ( ( x - currentSourceParams[ i ] ) * diff ) + currentSourceParams[ i ]
-
+					if nil ~= currentSourceParams[ i ] then
+						currentTarget[ i ] = ( ( x - currentSourceParams[ i ] ) * diff ) + currentSourceParams[ i ]
+					end
+					
 				end
                                         
 				-- treat the iterations
