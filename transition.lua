@@ -200,6 +200,8 @@ transitionLibrary.to = function( targetObject, transitionParams )
 		transitionObject.time = 0
 	end
 	
+	if transitionObject.time == 0 then transitionObject.time = 0.1 end
+	
 	-- The transition delay ( specified in the params )
 	if nil == transitionObject.delay then
 		transitionObject.delay = 0
@@ -263,10 +265,10 @@ transitionLibrary.from = function( targetObject, transitionParams )
 end
     
 -----------------------------------------------------------------------------------------
--- pauseAll( whatToPause )
+-- pause( whatToPause )
 -- pauses the whatToPause transition object, sequence, tag or display object
 -----------------------------------------------------------------------------------------
-transitionLibrary.pauseAll = function( whatToPause )
+transitionLibrary.pause = function( whatToPause )
 	
 	-- transition object or display object
 	if "table" == type( whatToPause ) then
@@ -291,7 +293,7 @@ transitionLibrary.pauseAll = function( whatToPause )
 	
 		-- otherwise, we have a display object
 		else			
-			_dispatchTransitionMethod( transitionLibrary.pauseAll, function( x ) return x.target == whatToPause end, true )
+			_dispatchTransitionMethod( transitionLibrary.pause, function( x ) return x.target == whatToPause end, true )
 		end
 	
 	-- sequence name or tag
@@ -310,32 +312,32 @@ transitionLibrary.pauseAll = function( whatToPause )
 		-- we have a sequence
 		if true == sequenceFound then
 			if nil == transitionLibrary._sequenceTable[ whatToPause ] then
-				error( DEBUG_STRING .. " the sequence name passed to the transition.pauseAll call does not exist." )
+				error( DEBUG_STRING .. " the sequence name passed to the transition.pause call does not exist." )
 			end
 	
 		local currentSequence = transitionLibrary._sequenceTable[ whatToPause ]
 	
 		-- pause all the transitions having the sequence object as destination
-		_dispatchTransitionMethod( transitionLibrary.pauseAll, function( x ) return x.target == currentSequence.object end )
+		_dispatchTransitionMethod( transitionLibrary.pause, function( x ) return x.target == currentSequence.object end )
 	
 		-- we have a tag
 		else
 			-- dispatch, with filter function for the tag
-			_dispatchTransitionMethod( transitionLibrary.pauseAll, function( x ) return x.tag == whatToPause end )
+			_dispatchTransitionMethod( transitionLibrary.pause, function( x ) return x.tag == whatToPause end )
 		end
 	
 	-- pause all
 	elseif nil == whatToPause then
-		_dispatchTransitionMethod( transitionLibrary.pauseAll, function( x ) return true end )
+		_dispatchTransitionMethod( transitionLibrary.pause, function( x ) return true end )
 	end
 	
 end
 
 -----------------------------------------------------------------------------------------
--- resumeAll( whatToResume )
+-- resume( whatToResume )
 -- resumes the whatToResume transition object, display object, sequence, tag or nil for all
 -----------------------------------------------------------------------------------------
-transitionLibrary.resumeAll = function( whatToResume )
+transitionLibrary.resume = function( whatToResume )
 
 	-- transition object or display object
 	if "table" == type( whatToResume ) then
@@ -366,7 +368,7 @@ transitionLibrary.resumeAll = function( whatToResume )
 	
 		-- otherwise, we have a display object
 		else			
-			_dispatchTransitionMethod( transitionLibrary.resumeAll, function( x ) return x.target == whatToResume end, true )
+			_dispatchTransitionMethod( transitionLibrary.resume, function( x ) return x.target == whatToResume end, true )
 		end
 	
 	-- sequence name or tag
@@ -386,23 +388,23 @@ transitionLibrary.resumeAll = function( whatToResume )
 		if true == sequenceFound then
 		
 			if nil == transitionLibrary._sequenceTable[ whatToResume ] then
-				error( DEBUG_STRING .. " the sequence name passed to the transition.resumeAll call does not exist." )
+				error( DEBUG_STRING .. " the sequence name passed to the transition.resume call does not exist." )
 			end
 	
 			local currentSequence = transitionLibrary._sequenceTable[ whatToResume ]
 	
 			-- resume all the transitions having the sequence object as destination
-			_dispatchTransitionMethod( transitionLibrary.resumeAll, function( x ) return x.target == currentSequence.object end )
+			_dispatchTransitionMethod( transitionLibrary.resume, function( x ) return x.target == currentSequence.object end )
 	
 		-- we have a tag
 		else
 			-- dispatch, with filter function for the tag
-			_dispatchTransitionMethod( transitionLibrary.resumeAll, function( x ) return x.tag == whatToResume end )
+			_dispatchTransitionMethod( transitionLibrary.resume, function( x ) return x.tag == whatToResume end )
 		end
 	
 	-- resume all
 	elseif nil == whatToResume then
-		_dispatchTransitionMethod( transitionLibrary.resumeAll, function( x ) return true end )
+		_dispatchTransitionMethod( transitionLibrary.resume, function( x ) return true end )
 	end
 
 end
@@ -411,7 +413,7 @@ end
 -- cancel( transitionObject )
 -- cancels the transitionObject transition
 -----------------------------------------------------------------------------------------
-transitionLibrary.cancelAll = function( whatToCancel )
+transitionLibrary.cancel = function( whatToCancel )
 
 	-- transition object or display object
 	if "table" == type( whatToCancel ) then
@@ -447,7 +449,7 @@ transitionLibrary.cancelAll = function( whatToCancel )
 	
 		-- otherwise, we have a display object
 		else			
-			_dispatchTransitionMethod( transitionLibrary.cancelAll, function( x ) return x.target == whatToCancel end, true )
+			_dispatchTransitionMethod( transitionLibrary.cancel, function( x ) return x.target == whatToCancel end, true )
 		end
 	
 	-- sequence name or tag
@@ -467,24 +469,24 @@ transitionLibrary.cancelAll = function( whatToCancel )
 		if true == sequenceFound then
 		
 			if nil == transitionLibrary._sequenceTable[ whatToCancel ] then
-				error( DEBUG_STRING .. " the sequence name passed to the transition.cancelAll call does not exist." )
+				error( DEBUG_STRING .. " the sequence name passed to the transition.cancel call does not exist." )
 			end
 	
 			local currentSequence = transitionLibrary._sequenceTable[ whatToCancel ]
 	
 			-- pause all the transitions having the sequence object as destination
-			_dispatchTransitionMethod( transitionLibrary.cancelAll, function( x ) return x.target == currentSequence.object end )
+			_dispatchTransitionMethod( transitionLibrary.cancel, function( x ) return x.target == currentSequence.object end )
 			table.remove( transitionLibrary._sequenceTable, whatToCancel )
 	
 		-- we have a tag
 		else
 			-- dispatch, with filter function for the tag
-			_dispatchTransitionMethod( transitionLibrary.cancelAll, function( x ) return x.tag == whatToCancel end, true )
+			_dispatchTransitionMethod( transitionLibrary.cancel, function( x ) return x.tag == whatToCancel end, true )
 		end
 	
 	-- resume all
 	elseif nil == whatToCancel then
-		_dispatchTransitionMethod( transitionLibrary.cancelAll, function( x ) return true end )
+		_dispatchTransitionMethod( transitionLibrary.cancel, function( x ) return true end )
 	end
 
 end
@@ -549,7 +551,7 @@ transitionLibrary.enterFrame = function( event )
 				
 				-- iterate the transition parameters and modify their values accordingly
 				for i, x in pairs( currentTargetParams ) do
-					-- calculate the diff factor (transition progress, values between 0 and 1) based on the easing
+					-- calculate the diff factor (transition progress, values between 0 and 1) based on the easing					
 					local diff = currentEasing( passedTimeInterval, currentTargetTime, 0, 1 )
 
 					local newPropertyValue = ( ( x - currentSourceParams[ i ] ) * diff ) + currentSourceParams[ i ]
