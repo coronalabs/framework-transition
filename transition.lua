@@ -1,12 +1,18 @@
------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 --
--- trans.lua
--- Corona SDK Transition Library v2.0
+-- transition.lua
+-- 
+-- Version: 2.0
 --
------------------------------------------------------------------------------------------
+-- Copyright (C) 2013 Corona Labs Inc. All Rights Reserved.
+--
+-------------------------------------------------------------------------------
+
+local Library = require "CoronaLibrary"
 
 -- the transition object
-local transitionLibrary = {}
+local lib = Library:new{ name='transition', publisherId='com.coronalabs', version=2 }
+
 -----------------------------------------------------------------------------------------
 -- constants
 -----------------------------------------------------------------------------------------
@@ -14,23 +20,23 @@ local transitionLibrary = {}
 local DEBUG_STRING = "Transition 2.0: "
 
 -----------------------------------------------------------------------------------------
--- library variables
+-- lib variables
 -----------------------------------------------------------------------------------------
 
 -- a table holding all transitions, active or paused
-transitionLibrary._transitionTable = {}
+lib._transitionTable = {}
 
 -- a table holding all the sequences
-transitionLibrary._sequenceTable = {}
+lib._sequenceTable = {}
 
 -- the last time the application was suspended
-transitionLibrary._prevSuspendTime = 0
+lib._prevSuspendTime = 0
 
 -- control variable for the runtime listener
-transitionLibrary._didAddRuntimeListener = false
+lib._didAddRuntimeListener = false
 
 -- reserved properties that cannot be transitioned
-transitionLibrary._reservedProperties = {"time", "delay", "delta", "iterations", "tag", "transition", "onComplete", "onPause", "onResume", "onCancel", "onRepeat", "onStart" }
+lib._reservedProperties = {"time", "delay", "delta", "iterations", "tag", "transition", "onComplete", "onPause", "onResume", "onCancel", "onRepeat", "onStart" }
 
 -----------------------------------------------------------------------------------------
 -- local functions
@@ -51,8 +57,8 @@ local function _deepCopyObjectParameters ( sourceObject, sourceParams, withDelta
 	end
     
     -- if any of the copied properties is reserved, we set it to nil    
-	for i = 1, #transitionLibrary._reservedProperties do
-		copyTable[ transitionLibrary._reservedProperties[ i ] ] = nil
+	for i = 1, #lib._reservedProperties do
+		copyTable[ lib._reservedProperties[ i ] ] = nil
 	end
 	
 	-- if delta was passed in, we add the source param value to the temporary copy table respective values
@@ -102,19 +108,19 @@ local function _handleSuspendResume( event )
 	-- if the application got suspended
 	if "applicationSuspend" == event.type then
 		-- assign the prevSuspendTime variable to the current internal time
-		transitionLibrary._prevSuspendTime = system.getTimer()
+		lib._prevSuspendTime = system.getTimer()
 		
 	-- if the application resumed
 	elseif "applicationResume" == event.type then
 	
 		-- calculate the difference between the suspension time and the current internal time
-		local nextSuspendedTime = system.getTimer() - transitionLibrary._prevSuspendTime
+		local nextSuspendedTime = system.getTimer() - lib._prevSuspendTime
                 
 		-- assign the difference to all the transitions that are in the table
-		for i = 1, #transitionLibrary._transitionTable do
+		for i = 1, #lib._transitionTable do
 			-- only do this for non-completed transitions
-			if not transitionLibrary._transitionTable[ i ]._transitionHasCompleted then
-				transitionLibrary._transitionTable[ i ]._beginTransitionTime = transitionLibrary._transitionTable[ i ]._beginTransitionTime + nextSuspendedTime
+			if not lib._transitionTable[ i ]._transitionHasCompleted then
+				lib._transitionTable[ i ]._beginTransitionTime = lib._transitionTable[ i ]._beginTransitionTime + nextSuspendedTime
 			end
 		end
 	end
@@ -137,24 +143,24 @@ end
 
 -----------------------------------------------------------------------------------------
 -- _dispatchTransitionMethod( methodCalled, filterMethod, reverseTraversal )
--- executes transition library calls on the transition objects
+-- executes transition lib calls on the transition objects
 -- methodCalled can be pause, resume or cancel
 -- filterMethod is used to identify specific groups
 -- reverseTraversal is used when cancelling all transitions, in which case we traverse the transition table from the end to the beginning, to avoid dependencies
 -----------------------------------------------------------------------------------------
 local function _dispatchTransitionMethod ( methodCalled, filterMethod, reverseTraversal )
 	if reverseTraversal then
-		for i = #transitionLibrary._transitionTable, 1, -1 do
+		for i = #lib._transitionTable, 1, -1 do
 			-- if we don't have a filter method or the filter method matches the current record
-			if nil == filterMethod or filterMethod( transitionLibrary._transitionTable[ i ] ) then
-				methodCalled( transitionLibrary._transitionTable[ i ] )
+			if nil == filterMethod or filterMethod( lib._transitionTable[ i ] ) then
+				methodCalled( lib._transitionTable[ i ] )
 			end
 		end             
 	else
-		for i = 1, #transitionLibrary._transitionTable do
+		for i = 1, #lib._transitionTable do
 			-- if we don't have a filter method or the filter method matches the current record
-			if nil == filterMethod or filterMethod( transitionLibrary._transitionTable[ i ] ) then
-				methodCalled( transitionLibrary._transitionTable[ i ] )
+			if nil == filterMethod or filterMethod( lib._transitionTable[ i ] ) then
+				methodCalled( lib._transitionTable[ i ] )
 			end
 		end             
 	end
@@ -164,7 +170,7 @@ end
 -- to( targetObject, transitionParams )
 -- transitions an object to the specified transitionParams
 ----------------------------------------------------------------------------------------- 
-transitionLibrary.to = function( targetObject, transitionParams )
+lib.to = function( targetObject, transitionParams )
 	if nil == targetObject then
 		error( DEBUG_STRING .. " you have to pass a display object to a transition.to call." )
 	end
@@ -174,7 +180,7 @@ transitionLibrary.to = function( targetObject, transitionParams )
 	end
 
 	-- Copy all the needed properties to the transition object
-	local transitionObject = _createTransitionObjectProperties( transitionParams, transitionLibrary._reservedProperties )
+	local transitionObject = _createTransitionObjectProperties( transitionParams, lib._reservedProperties )
 	
 	-- Create the object properties we need in order to operate the transition properly
 	-- The last time the transition was paused at
@@ -223,12 +229,12 @@ transitionLibrary.to = function( targetObject, transitionParams )
 	end
 
 	-- Insert the object in the transition table
-	table.insert( transitionLibrary._transitionTable, transitionObject )
+	table.insert( lib._transitionTable, transitionObject )
 	
 	-- If we don't have a runtime listener, add it
-	if not transitionLibrary._didAddRuntimeListener then
-		Runtime:addEventListener( "enterFrame", transitionLibrary.enterFrame )
-		transitionLibrary._didAddRuntimeListener = "true"
+	if not lib._didAddRuntimeListener then
+		Runtime:addEventListener( "enterFrame", lib.enterFrame )
+		lib._didAddRuntimeListener = "true"
 	end
 
 	return transitionObject
@@ -239,7 +245,7 @@ end
 -- from( targetObject, transitionParams )
 -- transitions an object from the specified transitionParams
 ----------------------------------------------------------------------------------------- 
-transitionLibrary.from = function( targetObject, transitionParams )
+lib.from = function( targetObject, transitionParams )
 	if nil == targetObject then
 		error( DEBUG_STRING .. " you have to pass a display object to a transition.from call." )
 	end
@@ -261,14 +267,14 @@ transitionLibrary.from = function( targetObject, transitionParams )
 	end
                 
 	-- create the transition and return the object
-	return transitionLibrary.to( targetObject, newParams )
+	return lib.to( targetObject, newParams )
 end
     
 -----------------------------------------------------------------------------------------
 -- pause( whatToPause )
 -- pauses the whatToPause transition object, sequence, tag or display object
 -----------------------------------------------------------------------------------------
-transitionLibrary.pause = function( whatToPause )
+lib.pause = function( whatToPause )
 	
 	-- transition object or display object
 	if "table" == type( whatToPause ) then
@@ -293,7 +299,7 @@ transitionLibrary.pause = function( whatToPause )
 	
 		-- otherwise, we have a display object
 		else			
-			_dispatchTransitionMethod( transitionLibrary.pause, function( x ) return x.target == whatToPause end, true )
+			_dispatchTransitionMethod( lib.pause, function( x ) return x.target == whatToPause end, true )
 		end
 	
 	-- sequence name or tag
@@ -307,28 +313,28 @@ transitionLibrary.pause = function( whatToPause )
 			end
 		end
 
-		table.foreach (transitionLibrary._sequenceTable, f)
+		table.foreach (lib._sequenceTable, f)
 	
 		-- we have a sequence
 		if true == sequenceFound then
-			if nil == transitionLibrary._sequenceTable[ whatToPause ] then
+			if nil == lib._sequenceTable[ whatToPause ] then
 				error( DEBUG_STRING .. " the sequence name passed to the transition.pause call does not exist." )
 			end
 	
-		local currentSequence = transitionLibrary._sequenceTable[ whatToPause ]
+		local currentSequence = lib._sequenceTable[ whatToPause ]
 	
 		-- pause all the transitions having the sequence object as destination
-		_dispatchTransitionMethod( transitionLibrary.pause, function( x ) return x.target == currentSequence.object end )
+		_dispatchTransitionMethod( lib.pause, function( x ) return x.target == currentSequence.object end )
 	
 		-- we have a tag
 		else
 			-- dispatch, with filter function for the tag
-			_dispatchTransitionMethod( transitionLibrary.pause, function( x ) return x.tag == whatToPause end )
+			_dispatchTransitionMethod( lib.pause, function( x ) return x.tag == whatToPause end )
 		end
 	
 	-- pause all
 	elseif nil == whatToPause then
-		_dispatchTransitionMethod( transitionLibrary.pause, function( x ) return true end )
+		_dispatchTransitionMethod( lib.pause, function( x ) return true end )
 	end
 	
 end
@@ -337,7 +343,7 @@ end
 -- resume( whatToResume )
 -- resumes the whatToResume transition object, display object, sequence, tag or nil for all
 -----------------------------------------------------------------------------------------
-transitionLibrary.resume = function( whatToResume )
+lib.resume = function( whatToResume )
 
 	-- transition object or display object
 	if "table" == type( whatToResume ) then
@@ -368,7 +374,7 @@ transitionLibrary.resume = function( whatToResume )
 	
 		-- otherwise, we have a display object
 		else			
-			_dispatchTransitionMethod( transitionLibrary.resume, function( x ) return x.target == whatToResume end, true )
+			_dispatchTransitionMethod( lib.resume, function( x ) return x.target == whatToResume end, true )
 		end
 	
 	-- sequence name or tag
@@ -382,29 +388,29 @@ transitionLibrary.resume = function( whatToResume )
 			end
 		end
 
-		table.foreach (transitionLibrary._sequenceTable, f)
+		table.foreach (lib._sequenceTable, f)
 	
 		-- we have a sequence
 		if true == sequenceFound then
 		
-			if nil == transitionLibrary._sequenceTable[ whatToResume ] then
+			if nil == lib._sequenceTable[ whatToResume ] then
 				error( DEBUG_STRING .. " the sequence name passed to the transition.resume call does not exist." )
 			end
 	
-			local currentSequence = transitionLibrary._sequenceTable[ whatToResume ]
+			local currentSequence = lib._sequenceTable[ whatToResume ]
 	
 			-- resume all the transitions having the sequence object as destination
-			_dispatchTransitionMethod( transitionLibrary.resume, function( x ) return x.target == currentSequence.object end )
+			_dispatchTransitionMethod( lib.resume, function( x ) return x.target == currentSequence.object end )
 	
 		-- we have a tag
 		else
 			-- dispatch, with filter function for the tag
-			_dispatchTransitionMethod( transitionLibrary.resume, function( x ) return x.tag == whatToResume end )
+			_dispatchTransitionMethod( lib.resume, function( x ) return x.tag == whatToResume end )
 		end
 	
 	-- resume all
 	elseif nil == whatToResume then
-		_dispatchTransitionMethod( transitionLibrary.resume, function( x ) return true end )
+		_dispatchTransitionMethod( lib.resume, function( x ) return true end )
 	end
 
 end
@@ -413,7 +419,7 @@ end
 -- cancel( transitionObject )
 -- cancels the transitionObject transition
 -----------------------------------------------------------------------------------------
-transitionLibrary.cancel = function( whatToCancel )
+lib.cancel = function( whatToCancel )
 
 	-- transition object or display object
 	if "table" == type( whatToCancel ) then
@@ -430,17 +436,17 @@ transitionLibrary.cancel = function( whatToCancel )
 			whatToCancel._transitionHasCompleted = true
 	
 			-- iterate the transition table and remove the transition object
-			for i = 1, #transitionLibrary._transitionTable do
-				if transitionLibrary._transitionTable[ i ] == whatToCancel then
-					table.remove( transitionLibrary._transitionTable, i )
+			for i = 1, #lib._transitionTable do
+				if lib._transitionTable[ i ] == whatToCancel then
+					table.remove( lib._transitionTable, i )
 					break
 				end
 			end
 	
 			-- if the table is empty, remove the event listener and set the module variable to false
-			if #transitionLibrary._transitionTable == 0 then
-				Runtime:removeEventListener( "enterFrame", transitionLibrary.enterFrame )
-				transitionLibrary._didAddRuntimeListener = false
+			if #lib._transitionTable == 0 then
+				Runtime:removeEventListener( "enterFrame", lib.enterFrame )
+				lib._didAddRuntimeListener = false
 			end
 	
 			-- dispatch onCancel on the transition object
@@ -449,7 +455,7 @@ transitionLibrary.cancel = function( whatToCancel )
 	
 		-- otherwise, we have a display object
 		else			
-			_dispatchTransitionMethod( transitionLibrary.cancel, function( x ) return x.target == whatToCancel end, true )
+			_dispatchTransitionMethod( lib.cancel, function( x ) return x.target == whatToCancel end, true )
 		end
 	
 	-- sequence name or tag
@@ -463,30 +469,30 @@ transitionLibrary.cancel = function( whatToCancel )
 			end
 		end
 
-		table.foreach (transitionLibrary._sequenceTable, f)
+		table.foreach (lib._sequenceTable, f)
 	
 		-- we have a sequence
 		if true == sequenceFound then
 		
-			if nil == transitionLibrary._sequenceTable[ whatToCancel ] then
+			if nil == lib._sequenceTable[ whatToCancel ] then
 				error( DEBUG_STRING .. " the sequence name passed to the transition.cancel call does not exist." )
 			end
 	
-			local currentSequence = transitionLibrary._sequenceTable[ whatToCancel ]
+			local currentSequence = lib._sequenceTable[ whatToCancel ]
 	
 			-- pause all the transitions having the sequence object as destination
-			_dispatchTransitionMethod( transitionLibrary.cancel, function( x ) return x.target == currentSequence.object end )
-			table.remove( transitionLibrary._sequenceTable, whatToCancel )
+			_dispatchTransitionMethod( lib.cancel, function( x ) return x.target == currentSequence.object end )
+			table.remove( lib._sequenceTable, whatToCancel )
 	
 		-- we have a tag
 		else
 			-- dispatch, with filter function for the tag
-			_dispatchTransitionMethod( transitionLibrary.cancel, function( x ) return x.tag == whatToCancel end, true )
+			_dispatchTransitionMethod( lib.cancel, function( x ) return x.tag == whatToCancel end, true )
 		end
 	
 	-- resume all
 	elseif nil == whatToCancel then
-		_dispatchTransitionMethod( transitionLibrary.cancel, function( x ) return true end )
+		_dispatchTransitionMethod( lib.cancel, function( x ) return true end )
 	end
 
 end
@@ -495,7 +501,7 @@ end
 -- enterFrame( event )
 -- the frame listener for the transitions
 -----------------------------------------------------------------------------------------
-transitionLibrary.enterFrame = function( event )
+lib.enterFrame = function( event )
 
 	-- get the current event time
 	local eventTime = event.time
@@ -504,8 +510,8 @@ transitionLibrary.enterFrame = function( event )
 	local completedTransitions = {}
 	
 	-- iterate the transition table
-	for i=1, #transitionLibrary._transitionTable do 
-		local currentTransitionObject = transitionLibrary._transitionTable[ i ]
+	for i=1, #lib._transitionTable do 
+		local currentTransitionObject = lib._transitionTable[ i ]
 		
 		-- if the object is not paused
 		if nil == currentTransitionObject._lastPausedTime then
@@ -515,7 +521,7 @@ transitionLibrary.enterFrame = function( event )
 			
 			-- if we have a time interval
 			if passedTimeInterval > 0 then
-			
+
 				-- if we don't have source parameters for the current object, we create them, keeping account of delta
 				if nil == currentTransitionObject._transitionSource then
 					currentTransitionObject._transitionSource = _deepCopyParameters( currentTransitionObject.target, currentTransitionObject._transitionTarget )
@@ -584,14 +590,14 @@ transitionLibrary.enterFrame = function( event )
                 
 	-- Remove anything transitions that is done
 	for i=#completedTransitions,1,-1 do
-		table.remove(transitionLibrary._transitionTable, completedTransitions[i])
+		table.remove(lib._transitionTable, completedTransitions[i])
 	end
                 
 	-- Be nice and preserve resources if no transitions can run
 	-- TODO: Should also unregister when there are only paused transitions
-	if #transitionLibrary._transitionTable == 0 then
-		Runtime:removeEventListener("enterFrame", transitionLibrary.enterFrame)
-		transitionLibrary._didAddRuntimeListener = false
+	if #lib._transitionTable == 0 then
+		Runtime:removeEventListener("enterFrame", lib.enterFrame)
+		lib._didAddRuntimeListener = false
 	end
 end
 
@@ -603,7 +609,7 @@ end
 -- for a sequence transition, you pass in an extra parameter, mode = withPrevious or afterPrevious, which defines
 -- the execution order of the transitions.
 -----------------------------------------------------------------------------------------
-transitionLibrary.newSequence = function( targetObject, params )
+lib.newSequence = function( targetObject, params )
 	if targetObject == nil then
 		error( DEBUG_STRING .. " you have to pass a target object to a transition.createSequence call." )
 	end
@@ -621,16 +627,16 @@ transitionLibrary.newSequence = function( targetObject, params )
 	end
 	
 	-- create a sequence with the name params.name
-	transitionLibrary._sequenceTable[params.name] = {}
+	lib._sequenceTable[params.name] = {}
 	
 	-- assign the transitions to it
-	transitionLibrary._sequenceTable[params.name].transitions = params.transitions
+	lib._sequenceTable[params.name].transitions = params.transitions
 	
 	-- assign the target object to it
-	transitionLibrary._sequenceTable[params.name].object = targetObject
+	lib._sequenceTable[params.name].object = targetObject
 	
 	-- localize it
-	local currentSequence = transitionLibrary._sequenceTable[params.name]
+	local currentSequence = lib._sequenceTable[params.name]
 	
 	-- create a temp table for the delays
 	local tranDelays = {}
@@ -691,20 +697,20 @@ end
 -- runSequence( sequenceName )
 -- runs the sequence sequenceName
 -----------------------------------------------------------------------------------------
-transitionLibrary.runSequence = function( sequenceName )
+lib.runSequence = function( sequenceName )
 	if sequenceName == nil then
 		error( DEBUG_STRING .. " you have to pass a sequence name to a transition.runSequence call." )
 	end
 	
-	if nil == transitionLibrary._sequenceTable[ sequenceName ] then
+	if nil == lib._sequenceTable[ sequenceName ] then
 		error( DEBUG_STRING .. " the sequence name passed to the transition.runSequence call does not exist." )
 	end	
 	
-	local currentSequence = transitionLibrary._sequenceTable[ sequenceName ]
+	local currentSequence = lib._sequenceTable[ sequenceName ]
 	
-	for i, v in ipairs ( transitionLibrary._sequenceTable[ sequenceName ].transitions ) do
+	for i, v in ipairs ( lib._sequenceTable[ sequenceName ].transitions ) do
 		v.mode = nil
-		transitionLibrary.to( transitionLibrary._sequenceTable[ sequenceName ].object, v)
+		lib.to( lib._sequenceTable[ sequenceName ].object, v)
 	end
 
 end
@@ -717,7 +723,7 @@ end
 -- blink( targetObject, actionDuration )
 -- blinks the targetObject with the transition duration actionDuration
 -----------------------------------------------------------------------------------------
-transitionLibrary.blink = function( targetObject, params )
+lib.blink = function( targetObject, params )
 	if targetObject == nil then
 		error( DEBUG_STRING .. " you have to pass a target object to a transition.blink call." )
 	end
@@ -742,7 +748,7 @@ transitionLibrary.blink = function( targetObject, params )
 	local actionX = x or targetObject.x
 	local actionY = y or targetObject.y
 	
-	local addedTransition = transitionLibrary.to( targetObject, 
+	local addedTransition = lib.to( targetObject, 
 	{
 		delay = actionDelay,
 		time = actionTime * 0.5,
@@ -761,7 +767,7 @@ transitionLibrary.blink = function( targetObject, params )
 		y = actionY,
 		tag = actionTag
 	} )
-		--local addedTransition = transitionLibrary.to( targetObject, { time = actionTime * 0.5, alpha = 0, transition="continuousLoop", iterations = -1 } )
+		--local addedTransition = lib.to( targetObject, { time = actionTime * 0.5, alpha = 0, transition="continuousLoop", iterations = -1 } )
 	
 	return addedTransition
 	
@@ -771,7 +777,7 @@ end
 -- moveTo( targetObject, xCoord, yCoord, actionTime, actionDelay )
 -- moves the targetObject to the xCoord, yCoord coordinates with the transition duration actionDuration and delay actionDelay
 -----------------------------------------------------------------------------------------
-transitionLibrary.moveTo = function( targetObject, params )
+lib.moveTo = function( targetObject, params )
 	if targetObject == nil then
 		error( DEBUG_STRING .. " you have to pass a target object to a transition.moveTo call." )
 	end
@@ -794,7 +800,7 @@ transitionLibrary.moveTo = function( targetObject, params )
 	local actionX = paramsTable.x or targetObject.x
 	local actionY = paramsTable.y or targetObject.y
 	
-	local addedTransition = transitionLibrary.to( targetObject, 
+	local addedTransition = lib.to( targetObject, 
 	{
 		delay = actionDelay,
 		time = actionTime,
@@ -821,7 +827,7 @@ transitionLibrary.moveTo = function( targetObject, params )
 -- moveBy( targetObject, xCoord, yCoord, actionTime, actionDelay )
 -- moves the targetObject by xCoord, yCoord from the actual position with the transition duration actionDuration and delay actionDelay
 -----------------------------------------------------------------------------------------
-transitionLibrary.moveBy = function( targetObject, params )
+lib.moveBy = function( targetObject, params )
 	if targetObject == nil then
 		error( DEBUG_STRING .. " you have to pass a target object to a transition.moveBy call." )
 	end
@@ -844,7 +850,7 @@ transitionLibrary.moveBy = function( targetObject, params )
 	local actionX = paramsTable.x or 0
 	local actionY = paramsTable.y or 0
 	
-	local addedTransition = transitionLibrary.to( targetObject, 
+	local addedTransition = lib.to( targetObject, 
 	{
 		delay = actionDelay,
 		time = actionTime,
@@ -871,7 +877,7 @@ end
 -- scaleTo( targetObject, xScale, yScale, actionTime, actionDelay )
 -- scales the targetObject to the xScale, yScale scale values with the transition duration actionDuration and delay actionDelay
 -----------------------------------------------------------------------------------------
-transitionLibrary.scaleTo = function( targetObject, params )
+lib.scaleTo = function( targetObject, params )
 	if targetObject == nil then
 		error( DEBUG_STRING .. " you have to pass a target object to a transition.scaleTo call." )
 	end
@@ -894,7 +900,7 @@ transitionLibrary.scaleTo = function( targetObject, params )
 	local actionY = paramsTable.y or targetObject.y
 	local actionTag = paramsTable.tag or nil
 	
-	local addedTransition = transitionLibrary.to( targetObject, 
+	local addedTransition = lib.to( targetObject, 
 	{
 		delay = actionDelay,
 		time = actionTime,
@@ -921,7 +927,7 @@ end
 -- scaleBy( targetObject, xScale, yScale, actionTime, actionDelay )
 -- scales the targetObject by the xScale, yScale scale values with the transition duration actionDuration and delay actionDelay
 -----------------------------------------------------------------------------------------
-transitionLibrary.scaleBy = function( targetObject, params )
+lib.scaleBy = function( targetObject, params )
 	if targetObject == nil then
 		error( DEBUG_STRING .. " you have to pass a target object to a transition.scaleBy call." )
 	end
@@ -944,7 +950,7 @@ transitionLibrary.scaleBy = function( targetObject, params )
 	local actionY = paramsTable.y or targetObject.y
 	local actionTag = paramsTable.tag or nil
 	
-	local addedTransition = transitionLibrary.to( targetObject, 
+	local addedTransition = lib.to( targetObject, 
 	{
 		delay = actionDelay,
 		time = actionTime,
@@ -971,7 +977,7 @@ end
 -- fadeIn( targetObject, actionDuration )
 -- fades in the targetObject with the transition duration actionDuration
 -----------------------------------------------------------------------------------------
-transitionLibrary.fadeIn = function( targetObject, params )
+lib.fadeIn = function( targetObject, params )
 	if targetObject == nil then
 		error( DEBUG_STRING .. " you have to pass a target object to a transition.fadeIn call." )
 	end
@@ -991,7 +997,7 @@ transitionLibrary.fadeIn = function( targetObject, params )
 	local actionY = paramsTable.y or targetObject.y
 	local actionTag = paramsTable.tag or nil
 	
-	local addedTransition = transitionLibrary.to( targetObject, 
+	local addedTransition = lib.to( targetObject, 
 	{
 		delay = actionDelay,
 		time = actionTime,
@@ -1016,7 +1022,7 @@ end
 -- fadeOut( targetObject, actionDuration )
 -- fades out the targetObject with the transition duration actionDuration
 -----------------------------------------------------------------------------------------
-transitionLibrary.fadeOut = function( targetObject, params )
+lib.fadeOut = function( targetObject, params )
 	if targetObject == nil then
 		error( DEBUG_STRING .. " you have to pass a target object to a transition.fadeIn call." )
 	end
@@ -1036,7 +1042,7 @@ transitionLibrary.fadeOut = function( targetObject, params )
 	local actionY = paramsTable.y or targetObject.y
 	local actionTag = paramsTable.tag or nil
 	
-	local addedTransition = transitionLibrary.to( targetObject, 
+	local addedTransition = lib.to( targetObject, 
 	{
 		delay = actionDelay,
 		time = actionTime,
@@ -1064,4 +1070,4 @@ end
 -- add the suspend / resume event listener to the runtime object
 Runtime:addEventListener("system", _handleSuspendResume)
 
-return transitionLibrary
+return lib
