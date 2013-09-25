@@ -53,9 +53,14 @@ local function _deepCopyObjectParameters ( sourceObject, sourceParams, withDelta
 
 	-- we copy all the source object's properties
 	for k, v in pairs( sourceObject ) do
+		-- TODO: There should be validation of values, as is done in the 1.0 library
+		-- See the following in the 1.0 library:
+		--   transition._nonPropertyKeys
+		--   validateValue()
 		copyTable[ k ] = sourceObject[ k ]
 	end
-    
+
+	-- TODO: This is less efficient than 1.0 implementation
     -- if any of the copied properties is reserved, we set it to nil    
 	for i = 1, #lib._reservedProperties do
 		copyTable[ lib._reservedProperties[ i ] ] = nil
@@ -95,6 +100,8 @@ local function _createTransitionObjectProperties( sourceParams, keywordList )
 	-- temporary copy table
 	local copyTable = {}
 	for i = 1, #keywordList do
+		-- TODO: if sourceParams[] returns nil, then grab the value from 
+		-- a _defaultParams table.
 		copyTable[ keywordList[ i ] ] = sourceParams[ keywordList[ i ] ]
 	end
 	return copyTable
@@ -179,6 +186,8 @@ lib.to = function( targetObject, transitionParams )
 		error( DEBUG_STRING .. " you have to pass a params table to a transition.to call." )
 	end
 
+	-- TODO: Assignment of defaults should be done in _createTransitionObjectProperties
+
 	-- Copy all the needed properties to the transition object
 	local transitionObject = _createTransitionObjectProperties( transitionParams, lib._reservedProperties )
 	
@@ -218,6 +227,7 @@ lib.to = function( targetObject, transitionParams )
 		transitionObject.transition = easing.linear
 	end
 
+	-- TODO: This is not needed. 'nil' is equivalent to 'false'
 	-- The transition delta ( specified in the params )
 	if nil == transitionObject.delta then
 		transitionObject.delta = false
@@ -497,6 +507,8 @@ lib.cancel = function( whatToCancel )
 
 end
 
+-- TODO: This should be renamed to _enterFrame, or better yet use a table listener
+-- function lib:enterFrame(), and then Runtime:addEventListener( "enterFrame", lib )
 -----------------------------------------------------------------------------------------
 -- enterFrame( event )
 -- the frame listener for the transitions
