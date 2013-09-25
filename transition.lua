@@ -536,12 +536,14 @@ lib.enterFrame = function( event )
 
 				-- if we don't have source parameters for the current object, we create them, keeping account of delta
 				if nil == currentTransitionObject._transitionSource then
+					-- dispatch the onStart event on the transition object
+					-- NOTE: This must be called prior to caching the source params
+					_dispatchControlEvent( currentTransitionObject, "onStart" )
+
 					currentTransitionObject._transitionSource = _deepCopyParameters( currentTransitionObject.target, currentTransitionObject._transitionTarget )
 					if currentTransitionObject.delta then
 						currentTransitionObject._transitionTarget = _deepCopyObjectParameters( currentTransitionObject._transitionTarget, currentTransitionObject.target, currentTransitionObject.delta)
 					end
-					-- dispatch the onStart event on the transition object
-					_dispatchControlEvent( currentTransitionObject, "onStart" )
 				end
 
 				-- if the passed time interval is greater than the transition time, set it to that value and complete the transition
@@ -1100,6 +1102,7 @@ lib.dissolve = function( src, dst, duration, delayDuration )
 	local lib = lib
 
 	duration = duration or 500
+
 	lib.to( src, { alpha=0, time=duration, delay=delayDuration, onStart=lib._dissolvePrepareSrc, onComplete=lib._setInvisible } )
 	lib.to( dst, { alpha=1, time=duration, delay=delayDuration, onStart=lib._dissolvePrepareDst } )
 end
