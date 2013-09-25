@@ -203,7 +203,7 @@ lib.to = function( targetObject, transitionParams )
 
 	-- The transition time ( specified in the params )
 	if nil == transitionObject.time then
-		transitionObject.time = 0
+		transitionObject.time = 500
 	end
 	
 	if transitionObject.time == 0 then transitionObject.time = 0.1 end
