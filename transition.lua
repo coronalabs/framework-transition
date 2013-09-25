@@ -1076,6 +1076,36 @@ lib.fadeOut = function( targetObject, params )
 end
 
 -----------------------------------------------------------------------------------------
+-- [Deprecated]
+-- 
+-- dissolve( src, dst, duration, delayDuration )
+-- fades out src and fades in dst
+-----------------------------------------------------------------------------------------
+
+lib._setInvisible = function( object )
+	object.isVisible = false
+end
+
+lib._dissolvePrepareSrc = function( object )
+	object.alpha = 1
+end
+
+lib._dissolvePrepareDst = function( object )
+	object.alpha = 0
+	object.isVisible = true
+end
+
+lib.dissolve = function( src, dst, duration, delayDuration )
+	-- faster to access a local timer var than a global one
+	local lib = lib
+
+	duration = duration or 500
+	lib.to( src, { alpha=0, time=duration, delay=delayDuration, onStart=lib._dissolvePrepareSrc, onComplete=lib._setInvisible } )
+	lib.to( dst, { alpha=1, time=duration, delay=delayDuration, onStart=lib._dissolvePrepareDst } )
+end
+
+
+-----------------------------------------------------------------------------------------
 -- setup before returning
 -----------------------------------------------------------------------------------------
 
