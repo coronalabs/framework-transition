@@ -38,6 +38,8 @@ lib._didAddRuntimeListener = false
 -- reserved properties that cannot be transitioned
 lib._reservedProperties = {"time", "delay", "delta", "iterations", "tag", "transition", "onComplete", "onPause", "onResume", "onCancel", "onRepeat", "onStart" }
 
+lib.debugEnabled = false
+
 -----------------------------------------------------------------------------------------
 -- local functions
 -----------------------------------------------------------------------------------------
@@ -145,7 +147,7 @@ local function _dispatchControlEvent( targetObject, controlEvent )
 	end
 	
 	-- if it does, execute it, sending the object as event (so we can use event.target)
-	targetObject[ controlEvent ]( targetObject.target, targetObject )
+	targetObject[ controlEvent ]( targetObject.target )
 end
 
 -----------------------------------------------------------------------------------------
@@ -179,17 +181,26 @@ end
 ----------------------------------------------------------------------------------------- 
 lib.to = function( targetObject, transitionParams )
 	if nil == targetObject then
-		error( DEBUG_STRING .. " you have to pass a display object to a transition.to call." )
+		if true == lib.debugEnabled then
+			error( DEBUG_STRING .. " you have to pass a display object to a transition.to call." )
+		end
 	end
 	
 	if nil == transitionParams then
-		error( DEBUG_STRING .. " you have to pass a params table to a transition.to call." )
+		if true == lib.debugEnabled then
+			error( DEBUG_STRING .. " you have to pass a params table to a transition.to call." )
+		end
 	end
 
 	-- TODO: Assignment of defaults should be done in _createTransitionObjectProperties
 
+	local transitionObject = nil
+
+	-- execute only if both targetObject and transitionParams are set
+	if targetObject and transitionParams then
+
 	-- Copy all the needed properties to the transition object
-	local transitionObject = _createTransitionObjectProperties( transitionParams, lib._reservedProperties )
+	transitionObject = _createTransitionObjectProperties( transitionParams, lib._reservedProperties )
 	
 	-- Create the object properties we need in order to operate the transition properly
 	-- The last time the transition was paused at
@@ -247,6 +258,8 @@ lib.to = function( targetObject, transitionParams )
 		lib._didAddRuntimeListener = "true"
 	end
 
+	end
+
 	return transitionObject
 	
 end
@@ -257,11 +270,15 @@ end
 ----------------------------------------------------------------------------------------- 
 lib.from = function( targetObject, transitionParams )
 	if nil == targetObject then
-		error( DEBUG_STRING .. " you have to pass a display object to a transition.from call." )
+		if true == lib.debugEnabled then
+			error( DEBUG_STRING .. " you have to pass a display object to a transition.from call." )
+		end
 	end
 	
 	if nil == transitionParams then
-		error( DEBUG_STRING .. " you have to pass a params table to a transition.from call." )
+		if true == lib.debugEnabled then
+			error( DEBUG_STRING .. " you have to pass a params table to a transition.from call." )
+		end
 	end
 
 	local newParams = {}
@@ -328,7 +345,9 @@ lib.pause = function( whatToPause )
 		-- we have a sequence
 		if true == sequenceFound then
 			if nil == lib._sequenceTable[ whatToPause ] then
-				error( DEBUG_STRING .. " the sequence name passed to the transition.pause call does not exist." )
+				if true == lib.debugEnabled then
+					error( DEBUG_STRING .. " the sequence name passed to the transition.pause call does not exist." )
+				end
 			end
 	
 		local currentSequence = lib._sequenceTable[ whatToPause ]
@@ -404,7 +423,9 @@ lib.resume = function( whatToResume )
 		if true == sequenceFound then
 		
 			if nil == lib._sequenceTable[ whatToResume ] then
-				error( DEBUG_STRING .. " the sequence name passed to the transition.resume call does not exist." )
+				if true == lib.debugEnabled then
+					error( DEBUG_STRING .. " the sequence name passed to the transition.resume call does not exist." )
+				end
 			end
 	
 			local currentSequence = lib._sequenceTable[ whatToResume ]
@@ -485,7 +506,9 @@ lib.cancel = function( whatToCancel )
 		if true == sequenceFound then
 		
 			if nil == lib._sequenceTable[ whatToCancel ] then
-				error( DEBUG_STRING .. " the sequence name passed to the transition.cancel call does not exist." )
+				if true == lib.debugEnabled then
+					error( DEBUG_STRING .. " the sequence name passed to the transition.cancel call does not exist." )
+				end
 			end
 	
 			local currentSequence = lib._sequenceTable[ whatToCancel ]
@@ -625,19 +648,27 @@ end
 -----------------------------------------------------------------------------------------
 lib.newSequence = function( targetObject, params )
 	if targetObject == nil then
-		error( DEBUG_STRING .. " you have to pass a target object to a transition.createSequence call." )
+		if true == lib.debugEnabled then
+			error( DEBUG_STRING .. " you have to pass a target object to a transition.createSequence call." )
+		end
 	end
 	
 	if params == nil then
-		error( DEBUG_STRING .. " you have to pass a params table to a transition.createSequence call." )
+		if true == lib.debugEnabled then
+			error( DEBUG_STRING .. " you have to pass a params table to a transition.createSequence call." )
+		end
 	end
 
 	if params.name == nil then
-		error( DEBUG_STRING .. " you have to pass a name in the params table to a transition.createSequence call." )
+		if true == lib.debugEnabled then
+			error( DEBUG_STRING .. " you have to pass a name in the params table to a transition.createSequence call." )
+		end
 	end
 
 	if params.transitions == nil then
-		error( DEBUG_STRING .. " you have to pass a table of transitions in the params table to a transition.createSequence call." )
+		if true == lib.debugEnabled then
+			error( DEBUG_STRING .. " you have to pass a table of transitions in the params table to a transition.createSequence call." )
+		end
 	end
 	
 	-- create a sequence with the name params.name
@@ -713,11 +744,15 @@ end
 -----------------------------------------------------------------------------------------
 lib.runSequence = function( sequenceName )
 	if sequenceName == nil then
-		error( DEBUG_STRING .. " you have to pass a sequence name to a transition.runSequence call." )
+		if true == lib.debugEnabled then
+			error( DEBUG_STRING .. " you have to pass a sequence name to a transition.runSequence call." )
+		end
 	end
 	
 	if nil == lib._sequenceTable[ sequenceName ] then
-		error( DEBUG_STRING .. " the sequence name passed to the transition.runSequence call does not exist." )
+		if true == lib.debugEnabled then
+			error( DEBUG_STRING .. " the sequence name passed to the transition.runSequence call does not exist." )
+		end
 	end	
 	
 	local currentSequence = lib._sequenceTable[ sequenceName ]
@@ -739,7 +774,9 @@ end
 -----------------------------------------------------------------------------------------
 lib.blink = function( targetObject, params )
 	if targetObject == nil then
-		error( DEBUG_STRING .. " you have to pass a target object to a transition.blink call." )
+		if true == lib.debugEnabled then
+			error( DEBUG_STRING .. " you have to pass a target object to a transition.blink call." )
+		end
 	end
 	
 	local paramsTable = params or {}
@@ -793,7 +830,9 @@ end
 -----------------------------------------------------------------------------------------
 lib.moveTo = function( targetObject, params )
 	if targetObject == nil then
-		error( DEBUG_STRING .. " you have to pass a target object to a transition.moveTo call." )
+		if true == lib.debugEnabled then
+			error( DEBUG_STRING .. " you have to pass a target object to a transition.moveTo call." )
+		end
 	end
 	
 	local paramsTable = params or {}
@@ -843,7 +882,9 @@ lib.moveTo = function( targetObject, params )
 -----------------------------------------------------------------------------------------
 lib.moveBy = function( targetObject, params )
 	if targetObject == nil then
-		error( DEBUG_STRING .. " you have to pass a target object to a transition.moveBy call." )
+		if true == lib.debugEnabled then
+			error( DEBUG_STRING .. " you have to pass a target object to a transition.moveBy call." )
+		end
 	end
 
 	local paramsTable = params or {}
@@ -893,7 +934,9 @@ end
 -----------------------------------------------------------------------------------------
 lib.scaleTo = function( targetObject, params )
 	if targetObject == nil then
-		error( DEBUG_STRING .. " you have to pass a target object to a transition.scaleTo call." )
+		if true == lib.debugEnabled then
+			error( DEBUG_STRING .. " you have to pass a target object to a transition.scaleTo call." )
+		end
 	end
 	
 	local paramsTable = params or {}
@@ -943,7 +986,9 @@ end
 -----------------------------------------------------------------------------------------
 lib.scaleBy = function( targetObject, params )
 	if targetObject == nil then
-		error( DEBUG_STRING .. " you have to pass a target object to a transition.scaleBy call." )
+		if true == lib.debugEnabled then
+			error( DEBUG_STRING .. " you have to pass a target object to a transition.scaleBy call." )
+		end
 	end
 	
 	local paramsTable = params or {}
@@ -993,7 +1038,9 @@ end
 -----------------------------------------------------------------------------------------
 lib.fadeIn = function( targetObject, params )
 	if targetObject == nil then
-		error( DEBUG_STRING .. " you have to pass a target object to a transition.fadeIn call." )
+		if true == lib.debugEnabled then
+			error( DEBUG_STRING .. " you have to pass a target object to a transition.fadeIn call." )
+		end
 	end
 	
 	local paramsTable = params or {}
@@ -1038,7 +1085,9 @@ end
 -----------------------------------------------------------------------------------------
 lib.fadeOut = function( targetObject, params )
 	if targetObject == nil then
-		error( DEBUG_STRING .. " you have to pass a target object to a transition.fadeIn call." )
+		if true == lib.debugEnabled then
+			error( DEBUG_STRING .. " you have to pass a target object to a transition.fadeIn call." )
+		end
 	end
 	
 	local paramsTable = params or {}
