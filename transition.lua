@@ -26,6 +26,9 @@ local DEBUG_STRING = "Transition 2.0: "
 -- a table holding all transitions, active or paused
 lib._transitionTable = {}
 
+-- a table holding all display objects, sequences and tags that are to be cancelled, resumed and paused
+lib._controlEntities = {}
+
 -- a table holding all the sequences
 lib._sequenceTable = {}
 
@@ -92,6 +95,22 @@ local function _deepCopyParameters ( sourceObject, sourceParams )
 	end
 	
 	return copyTable
+end
+
+-----------------------------------------------------------------------------------------
+-- _validateValue( k, v )
+-- validates input values. Ensures they are number format
+----------------------------------------------------------------------------------------- 
+local function _validateValue( k, v )
+	if ( "number" == type( v ) and numberKeys[k] ) then
+		local isNan = ( v ~= v )
+		if ( isNan ) then
+			print( "ERROR: Invalid number argument provided. Attempt to set property " .. k .. " to NaN." )
+		end
+		assert( not isNan )
+	end
+
+	return v
 end
 
 -----------------------------------------------------------------------------------------
@@ -325,8 +344,9 @@ lib.pause = function( whatToPause )
 			_dispatchControlEvent( whatToPause, "onPause" )
 	
 		-- otherwise, we have a display object
-		else			
-			_dispatchTransitionMethod( lib.pause, function( x ) return x.target == whatToPause end, true )
+		else	
+			lib._controlEntities[ #lib._controlEntities + 1 ] = { target = whatToPause, action = "pause", type = "displayobject" }		
+			--_dispatchTransitionMethod( lib.pause, function( x ) return x.target == whatToPause end, true )
 		end
 	
 	-- sequence name or tag
@@ -358,12 +378,14 @@ lib.pause = function( whatToPause )
 		-- we have a tag
 		else
 			-- dispatch, with filter function for the tag
-			_dispatchTransitionMethod( lib.pause, function( x ) return x.tag == whatToPause end )
+			lib._controlEntities[ #lib._controlEntities + 1 ] = { target = whatToPause, action = "pause", type = "tag" }
+			--_dispatchTransitionMethod( lib.pause, function( x ) return x.tag == whatToPause end )
 		end
 	
 	-- pause all
 	elseif nil == whatToPause then
-		_dispatchTransitionMethod( lib.pause, function( x ) return true end )
+		lib._controlEntities[ #lib._controlEntities + 1 ] = { target = nil, action = "pause", type = "all" }
+		--_dispatchTransitionMethod( lib.pause, function( x ) return true end )
 	end
 	
 end
@@ -402,8 +424,9 @@ lib.resume = function( whatToResume )
 			_dispatchControlEvent( whatToResume, "onResume" )
 	
 		-- otherwise, we have a display object
-		else			
-			_dispatchTransitionMethod( lib.resume, function( x ) return x.target == whatToResume end, true )
+		else	
+			lib._controlEntities[ #lib._controlEntities + 1 ] = { target = whatToResume, action = "resume", type = "displayobject" }		
+			--_dispatchTransitionMethod( lib.resume, function( x ) return x.target == whatToResume end, true )
 		end
 	
 	-- sequence name or tag
@@ -436,12 +459,14 @@ lib.resume = function( whatToResume )
 		-- we have a tag
 		else
 			-- dispatch, with filter function for the tag
-			_dispatchTransitionMethod( lib.resume, function( x ) return x.tag == whatToResume end )
+			lib._controlEntities[ #lib._controlEntities + 1 ] = { target = whatToResume, action = "resume", type = "tag" }
+			--_dispatchTransitionMethod( lib.resume, function( x ) return x.tag == whatToResume end )
 		end
 	
 	-- resume all
 	elseif nil == whatToResume then
-		_dispatchTransitionMethod( lib.resume, function( x ) return true end )
+		lib._controlEntities[ #lib._controlEntities + 1 ] = { target = nil, action = "resume", type = "all" }
+		--_dispatchTransitionMethod( lib.resume, function( x ) return true end )
 	end
 
 end
@@ -465,28 +490,12 @@ lib.cancel = function( whatToCancel )
 	
 			-- set the transition as completed
 			whatToCancel._transitionHasCompleted = true
-	
-			-- iterate the transition table and remove the transition object
-			for i = 1, #lib._transitionTable do
-				if lib._transitionTable[ i ] == whatToCancel then
-					table.remove( lib._transitionTable, i )
-					break
-				end
-			end
-	
-			-- if the table is empty, remove the event listener and set the module variable to false
-			if #lib._transitionTable == 0 then
-				Runtime:removeEventListener( "enterFrame", lib.enterFrame )
-				lib._didAddRuntimeListener = false
-			end
-	
-			-- dispatch onCancel on the transition object
-			_dispatchControlEvent(whatToCancel, "onCancel")
+			whatToCancel._transitionHasBeenCancelled = true
 
-	
 		-- otherwise, we have a display object
-		else			
-			_dispatchTransitionMethod( lib.cancel, function( x ) return x.target == whatToCancel end, true )
+		else
+			-- insert the object into the cancelled display objects table
+			lib._controlEntities[ #lib._controlEntities + 1 ] = { target = whatToCancel, action = "cancel", type = "displayobject" }
 		end
 	
 	-- sequence name or tag
@@ -520,12 +529,14 @@ lib.cancel = function( whatToCancel )
 		-- we have a tag
 		else
 			-- dispatch, with filter function for the tag
-			_dispatchTransitionMethod( lib.cancel, function( x ) return x.tag == whatToCancel end, true )
+			--_dispatchTransitionMethod( lib.cancel, function( x ) return x.tag == whatToCancel end, true )
+			lib._controlEntities[ #lib._controlEntities + 1 ] = { target = whatToCancel, action = "cancel", type = "tag" }
 		end
 	
 	-- resume all
 	elseif nil == whatToCancel then
-		_dispatchTransitionMethod( lib.cancel, function( x ) return true end )
+		lib._controlEntities[ #lib._controlEntities + 1 ] = { target = nil, action = "cancel", type = "all" }
+		--_dispatchTransitionMethod( lib.cancel, function( x ) return true end )
 	end
 
 end
@@ -541,12 +552,62 @@ lib.enterFrame = function( event )
 	-- get the current event time
 	local eventTime = event.time
 	
+	-- create a local copy of the transition table, to avoid a race condition
+	local currentActiveTweens = lib._transitionTable
+	lib._transitionTable = {}
+	
+	-- create a local copy of the cancelled display objects table, to avoid a race condition
+	local currentControlEntities = lib._controlEntities
+	lib._controlEntities = {}
+	
 	-- create a local completed transitions table which we will empty at the end of the function's execution
 	local completedTransitions = {}
 	
+	-- create a local 
+	
 	-- iterate the transition table
-	for i=1, #lib._transitionTable do 
-		local currentTransitionObject = lib._transitionTable[ i ]
+	for i=1, #currentActiveTweens do 
+	
+		local currentTransitionObject = currentActiveTweens[ i ]
+		
+		-- if the target display object equals one of the objects in the currentControlEntities, mark the transition as paused, resumed or cancelled, and completed if the case
+		
+		if #currentControlEntities > 0 and nil ~= currentTransitionObject.target then
+			for i = 1, #currentControlEntities do
+				
+				-- cancel case, for display objects
+				if currentControlEntities[ i ].target == currentTransitionObject.target and currentControlEntities[ i ].action == "cancel" and currentControlEntities[ i ].type == "displayobject" then
+					currentTransitionObject._transitionHasBeenCancelled = true
+					currentTransitionObject._transitionHasCompleted = true
+				-- cancel case, for tags
+				elseif currentControlEntities[ i ].target == currentTransitionObject.tag and currentControlEntities[ i ].action == "cancel" and currentControlEntities[ i ].type == "tag" then
+					currentTransitionObject._transitionHasBeenCancelled = true
+					currentTransitionObject._transitionHasCompleted = true
+				-- cancel all
+				elseif currentControlEntities[ i ].target == nil and currentControlEntities[ i ].action == "cancel" and currentControlEntities[ i ].type == "all" then
+					currentTransitionObject._transitionHasBeenCancelled = true
+					currentTransitionObject._transitionHasCompleted = true
+				-- pause case, for display objects
+				elseif currentControlEntities[ i ].target == currentTransitionObject.target and currentControlEntities[ i ].action == "pause" and currentControlEntities[ i ].type == "displayobject" then
+					lib.pause( currentTransitionObject )
+				-- pause case, for tags
+				elseif currentControlEntities[ i ].target == currentTransitionObject.tag and currentControlEntities[ i ].action == "pause" and currentControlEntities[ i ].type == "tag" then
+					lib.pause( currentTransitionObject )
+				-- pause all
+				elseif currentControlEntities[ i ].target == nil and currentControlEntities[ i ].action == "pause" and currentControlEntities[ i ].type == "all" then
+					lib.pause( currentTransitionObject )
+				-- resume case, for display objects
+				elseif currentControlEntities[ i ].target == currentTransitionObject.target and currentControlEntities[ i ].action == "resume" and currentControlEntities[ i ].type == "displayobject" then
+					lib.resume( currentTransitionObject )
+				-- resume case, for tags
+				elseif currentControlEntities[ i ].target == currentTransitionObject.tag and currentControlEntities[ i ].action == "resume" and currentControlEntities[ i ].type == "tag" then
+					lib.resume( currentTransitionObject )
+				-- resume all
+				elseif currentControlEntities[ i ].target == nil and currentControlEntities[ i ].action == "resume" and currentControlEntities[ i ].type == "all" then
+					lib.resume( currentTransitionObject )
+				end
+			end
+		end
 		
 		-- if the object is not paused
 		if nil == currentTransitionObject._lastPausedTime then
@@ -610,25 +671,57 @@ lib.enterFrame = function( event )
 					if currentTransitionObject.iterations == 1 then
 						-- the transition has completed
 						completedTransitions[ #completedTransitions + 1 ] = i
-						_dispatchControlEvent( currentTransitionObject, "onComplete" )
-					else
-						-- we have more iterations
-						currentTransitionObject._transitionHasCompleted = false
-						if currentTransitionObject.iterations > 0 then
-							currentTransitionObject.iterations = currentTransitionObject.iterations-1
+						if currentTransitionObject._transitionHasBeenCancelled then
+							_dispatchControlEvent(currentTransitionObject, "onCancel")
+						else
+							_dispatchControlEvent( currentTransitionObject, "onComplete" )
 						end
-						currentTransitionObject._beginTransitionTime = currentTransitionObject._beginTransitionTime + currentTransitionObject.time + currentTransitionObject.delay
-						_dispatchControlEvent(currentTransitionObject, "onRepeat")
+					else
+						if currentTransitionObject._transitionHasBeenCancelled then
+							completedTransitions[ #completedTransitions + 1 ] = i
+							_dispatchControlEvent(currentTransitionObject, "onCancel")
+						else
+							-- we have more iterations
+							currentTransitionObject._transitionHasCompleted = false
+							if currentTransitionObject.iterations > 0 then
+								currentTransitionObject.iterations = currentTransitionObject.iterations-1
+							end
+							currentTransitionObject._beginTransitionTime = currentTransitionObject._beginTransitionTime + currentTransitionObject.time + currentTransitionObject.delay
+							_dispatchControlEvent(currentTransitionObject, "onRepeat")
+						end
 					end
+
 				end
 			end
 		end
 	end
+       
+    -- Empty the currentControlEntities table, so that all the previous "all" resume, pause and cancel events are gone.
+    currentControlEntities = {}
                 
-	-- Remove anything transitions that is done
+	-- Remove the transitions that are done
 	for i=#completedTransitions,1,-1 do
-		table.remove(lib._transitionTable, completedTransitions[i])
+		table.remove(currentActiveTweens, completedTransitions[i])
 	end
+
+	-- Swap out tmp tween table and restore lib._transitionTable.
+	-- Append any new tweens in the tmp table back into lib._transitionTable
+	local tmpTweens = lib._transitionTable
+	if #tmpTweens > 0 then
+		for _,tween in ipairs( tmpTweens ) do
+			table.insert( currentActiveTweens, tween )
+		end
+	end
+	lib._transitionTable = currentActiveTweens
+	
+	-- restore the lib._controlEntities table by the model above
+	local tmpObjectEntities = lib._controlEntities
+	if #tmpObjectEntities > 0 then
+		for _,object in ipairs( tmpObjectEntities ) do
+			table.insert( currentControlEntities, object )
+		end
+	end
+	lib._controlEntities = currentControlEntities
                 
 	-- Be nice and preserve resources if no transitions can run
 	-- TODO: Should also unregister when there are only paused transitions
