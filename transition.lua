@@ -29,6 +29,9 @@ lib._transitionTable = {}
 -- a table holding all display objects, sequences and tags that are to be cancelled, resumed and paused
 lib._controlEntities = {}
 
+-- a table holding all the transitions, to be iterated by the pause / resume / cancel methods
+lib._enterFrameTweens = {}
+
 -- a table holding all the sequences
 lib._sequenceTable = {}
 
@@ -195,18 +198,48 @@ local function _dispatchTransitionMethod ( methodCalled, filterMethod, reverseTr
 end
 
 -----------------------------------------------------------------------------------------
+-- find( type, target )
+-- iterates the lib._enterFrameTweens variable and returns a table with transitions
+-- that are of the type transitionType ( "transition", "tag", "all" or "displayobject" )
+-- and have the target transitionTarget( transition object for transition, string for tag, 
+-- nil for all and object for displayobject )
+-----------------------------------------------------------------------------------------
+lib.find = function( transitionType, transitionTarget )
+	
+	local foundTransitions = {}
+	
+	if #lib._enterFrameTweens > 0 then
+		for i = 1, #lib._enterFrameTweens do
+			local currentTween = lib._enterFrameTweens[ i ]
+			if "transition" == transitionType and transitionTarget == currentTween then
+				table.insert( foundTransitions, currentTween )
+			elseif "tag" == transitionType and transitionTarget == currentTween.tag then
+				table.insert( foundTransitions, currentTween )
+			elseif "all" == transitionType and nil == transitionTarget then
+				table.insert( foundTransitions, currentTween )
+			elseif "displayobject" == transitionType and transitionTarget == currentTween.target then
+				table.insert( foundTransitions, currentTween )
+			end
+		end
+	end
+	
+	return foundTransitions
+	
+end
+
+-----------------------------------------------------------------------------------------
 -- to( targetObject, transitionParams )
 -- transitions an object to the specified transitionParams
 ----------------------------------------------------------------------------------------- 
 lib.to = function( targetObject, transitionParams )
 	if nil == targetObject then
-		if true == lib.debugEnabled then
+		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a display object to a transition.to call." )
 		end
 	end
 	
 	if nil == transitionParams then
-		if true == lib.debugEnabled then
+		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a params table to a transition.to call." )
 		end
 	end
@@ -218,64 +251,64 @@ lib.to = function( targetObject, transitionParams )
 	-- execute only if both targetObject and transitionParams are set
 	if targetObject and transitionParams then
 
-	-- Copy all the needed properties to the transition object
-	transitionObject = _createTransitionObjectProperties( transitionParams, lib._reservedProperties )
-	
-	-- Create the object properties we need in order to operate the transition properly
-	-- The last time the transition was paused at
-	transitionObject._lastPausedTime = nil
-	
-	-- Transition has completed control variable
-	transitionObject._transitionHasCompleted = false
-	
-	-- The transition target object (used for event dispatch)
-	transitionObject.target = targetObject
+		-- Copy all the needed properties to the transition object
+		transitionObject = _createTransitionObjectProperties( transitionParams, lib._reservedProperties )
 
-	-- The transition object begin time
-	transitionObject._beginTransitionTime = system.getTimer()
+		-- Create the object properties we need in order to operate the transition properly
+		-- The last time the transition was paused at
+		transitionObject._lastPausedTime = nil
 
-	-- The transition object target parameters ( the end params )
-	transitionObject._transitionTarget = _deepCopyObjectParameters( transitionParams )
+		-- Transition has completed control variable
+		transitionObject._transitionHasCompleted = false
 
-	-- The transition object source parameters ( the begin params )
-	transitionObject._transitionSource = nil
+		-- The transition target object (used for event dispatch)
+		transitionObject.target = targetObject
 
-	-- The transition time ( specified in the params )
-	if nil == transitionObject.time then
-		transitionObject.time = 500
-	end
-	
-	if transitionObject.time == 0 then transitionObject.time = 0.1 end
-	
-	-- The transition delay ( specified in the params )
-	if nil == transitionObject.delay then
-		transitionObject.delay = 0
-	end
+		-- The transition object begin time
+		transitionObject._beginTransitionTime = system.getTimer()
 
-	-- The transition easing ( specified in the params )	
-	if nil == transitionObject.transition then
-		transitionObject.transition = easing.linear
-	end
+		-- The transition object target parameters ( the end params )
+		transitionObject._transitionTarget = _deepCopyObjectParameters( transitionParams )
 
-	-- TODO: This is not needed. 'nil' is equivalent to 'false'
-	-- The transition delta ( specified in the params )
-	if nil == transitionObject.delta then
-		transitionObject.delta = false
-	end
+		-- The transition object source parameters ( the begin params )
+		transitionObject._transitionSource = nil
 
-	-- The transition number of iterations ( specified in the params )
-	if nil == transitionObject.iterations or 0 == transitionObject.iterations then
-		transitionObject.iterations = 1
-	end
+		-- The transition time ( specified in the params )
+		if nil == transitionObject.time then
+			transitionObject.time = 500
+		end
 
-	-- Insert the object in the transition table
-	table.insert( lib._transitionTable, transitionObject )
-	
-	-- If we don't have a runtime listener, add it
-	if not lib._didAddRuntimeListener then
-		Runtime:addEventListener( "enterFrame", lib.enterFrame )
-		lib._didAddRuntimeListener = "true"
-	end
+		if transitionObject.time == 0 then transitionObject.time = 0.1 end
+
+		-- The transition delay ( specified in the params )
+		if nil == transitionObject.delay then
+			transitionObject.delay = 0
+		end
+
+		-- The transition easing ( specified in the params )	
+		if nil == transitionObject.transition then
+			transitionObject.transition = easing.linear
+		end
+
+		-- TODO: This is not needed. 'nil' is equivalent to 'false'
+		-- The transition delta ( specified in the params )
+		if nil == transitionObject.delta then
+			transitionObject.delta = false
+		end
+
+		-- The transition number of iterations ( specified in the params )
+		if nil == transitionObject.iterations or 0 == transitionObject.iterations then
+			transitionObject.iterations = 1
+		end
+
+		-- Insert the object in the transition table
+		table.insert( lib._transitionTable, transitionObject )
+
+		-- If we don't have a runtime listener, add it
+		if not lib._didAddRuntimeListener then
+			Runtime:addEventListener( "enterFrame", lib.enterFrame )
+			lib._didAddRuntimeListener = "true"
+		end
 
 	end
 
@@ -289,13 +322,13 @@ end
 ----------------------------------------------------------------------------------------- 
 lib.from = function( targetObject, transitionParams )
 	if nil == targetObject then
-		if true == lib.debugEnabled then
+		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a display object to a transition.from call." )
 		end
 	end
 	
 	if nil == transitionParams then
-		if true == lib.debugEnabled then
+		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a params table to a transition.from call." )
 		end
 	end
@@ -322,70 +355,35 @@ end
 -----------------------------------------------------------------------------------------
 lib.pause = function( whatToPause )
 	
+	-- we use the targetType variable to establish how we iterate at the end of this method
+	local targetType = nil
+	local iterationTarget = nil
+	
 	-- transition object or display object
 	if "table" == type( whatToPause ) then
-	
 		-- if the .transition field exists, then we have a transition object
 		if nil ~= whatToPause.transition then
-			-- if the transition is already completed, return
-			if whatToPause._transitionHasCompleted then
-				return
-			end
-	
-			-- if the transition is already paused, return
-			if nil ~= whatToPause._lastPausedTime then
-				return
-			end
-				
-			-- set the pausedTime to the current time
-			whatToPause._lastPausedTime = system.getTimer()
-	
-			-- dispatch the onPause control event
-			_dispatchControlEvent( whatToPause, "onPause" )
-	
+			targetType = "transition"
 		-- otherwise, we have a display object
-		else	
-			lib._controlEntities[ #lib._controlEntities + 1 ] = { target = whatToPause, action = "pause", type = "displayobject" }		
-			--_dispatchTransitionMethod( lib.pause, function( x ) return x.target == whatToPause end, true )
+		else
+			targetType = "displayobject"
 		end
-	
 	-- sequence name or tag
 	elseif "string" == type( whatToPause ) then
-
-		local sequenceFound = false
-	
-		local function f ( k, v )
-			if tostring( k ) == whatToPause then
-				sequenceFound = true
-			end
-		end
-
-		table.foreach (lib._sequenceTable, f)
-	
-		-- we have a sequence
-		if true == sequenceFound then
-			if nil == lib._sequenceTable[ whatToPause ] then
-				if true == lib.debugEnabled then
-					error( DEBUG_STRING .. " the sequence name passed to the transition.pause call does not exist." )
-				end
-			end
-	
-		local currentSequence = lib._sequenceTable[ whatToPause ]
-	
-		-- pause all the transitions having the sequence object as destination
-		_dispatchTransitionMethod( lib.pause, function( x ) return x.target == currentSequence.object end )
-	
-		-- we have a tag
-		else
-			-- dispatch, with filter function for the tag
-			lib._controlEntities[ #lib._controlEntities + 1 ] = { target = whatToPause, action = "pause", type = "tag" }
-			--_dispatchTransitionMethod( lib.pause, function( x ) return x.tag == whatToPause end )
-		end
-	
+		targetType = "tag"
 	-- pause all
 	elseif nil == whatToPause then
-		lib._controlEntities[ #lib._controlEntities + 1 ] = { target = nil, action = "pause", type = "all" }
-		--_dispatchTransitionMethod( lib.pause, function( x ) return true end )
+		targetType = "all"
+	end
+	
+	if "all" ~= targetType then iterationTarget = whatToPause end
+	-- iterate the table
+	local pauseTable = lib.find( targetType, iterationTarget )
+	if #pauseTable > 0 then
+		for i = 1, #pauseTable do
+			local currentTween = pauseTable[ i ]
+			currentTween._paused = true
+		end
 	end
 	
 end
@@ -396,77 +394,50 @@ end
 -----------------------------------------------------------------------------------------
 lib.resume = function( whatToResume )
 
+	-- we use the targetType variable to establish how we iterate at the end of this method
+	local targetType = nil
+	local iterationTarget = nil
+
 	-- transition object or display object
 	if "table" == type( whatToResume ) then
-	
 		-- if the .transition field exists, then we have a transition object
 		if nil ~= whatToResume.transition then
-			-- if the transition already completed, return
-			if whatToResume._transitionHasCompleted then
-				return
-			end
-	
-			-- if the transition object was never paused, return
-			if nil == whatToResume._lastPausedTime then
-				return
-			end
-				
-			-- we calculate the time interval the transition was paused for
-			local transitionPausedInterval = system.getTimer() - whatToResume._lastPausedTime
-	
-			-- we adjust the transition object's begin transition variable with the calculated time interval
-			whatToResume._beginTransitionTime = whatToResume._beginTransitionTime + transitionPausedInterval
-	
-			-- nil out the lastPausedTime variable of the transition object
-			whatToResume._lastPausedTime = nil
-	
-			-- dispatch the onResume method on the object
-			_dispatchControlEvent( whatToResume, "onResume" )
-	
+			targetType = "transition"
 		-- otherwise, we have a display object
-		else	
-			lib._controlEntities[ #lib._controlEntities + 1 ] = { target = whatToResume, action = "resume", type = "displayobject" }		
-			--_dispatchTransitionMethod( lib.resume, function( x ) return x.target == whatToResume end, true )
+		else
+			targetType = "displayobject"
 		end
-	
 	-- sequence name or tag
 	elseif "string" == type( whatToResume ) then
-
-		local sequenceFound = false
-	
-		local function f ( k, v )
-			if tostring( k ) == whatToResume then
-				sequenceFound = true
-			end
-		end
-
-		table.foreach (lib._sequenceTable, f)
-	
-		-- we have a sequence
-		if true == sequenceFound then
-		
-			if nil == lib._sequenceTable[ whatToResume ] then
-				if true == lib.debugEnabled then
-					error( DEBUG_STRING .. " the sequence name passed to the transition.resume call does not exist." )
-				end
-			end
-	
-			local currentSequence = lib._sequenceTable[ whatToResume ]
-	
-			-- resume all the transitions having the sequence object as destination
-			_dispatchTransitionMethod( lib.resume, function( x ) return x.target == currentSequence.object end )
-	
-		-- we have a tag
-		else
-			-- dispatch, with filter function for the tag
-			lib._controlEntities[ #lib._controlEntities + 1 ] = { target = whatToResume, action = "resume", type = "tag" }
-			--_dispatchTransitionMethod( lib.resume, function( x ) return x.tag == whatToResume end )
-		end
-	
-	-- resume all
+		targetType = "tag"
+	-- pause all
 	elseif nil == whatToResume then
-		lib._controlEntities[ #lib._controlEntities + 1 ] = { target = nil, action = "resume", type = "all" }
-		--_dispatchTransitionMethod( lib.resume, function( x ) return true end )
+		targetType = "all"
+	end
+	
+	if "all" ~= targetType then iterationTarget = whatToResume end
+	-- iterate the table
+	
+	local resumeTable = lib.find( targetType, iterationTarget )
+	if #resumeTable > 0 then
+		for i = 1, #resumeTable do
+			local currentTween = resumeTable[ i ]
+			-- only if the transition is not completed and was paused
+			if not currentTween._transitionHasCompleted and nil ~= currentTween._lastPausedTime then
+				-- we calculate the time interval the transition was paused for
+				local transitionPausedInterval = system.getTimer() - currentTween._lastPausedTime
+
+				-- we adjust the transition object's begin transition variable with the calculated time interval
+				currentTween._beginTransitionTime = currentTween._beginTransitionTime + transitionPausedInterval
+
+				-- nil out the lastPausedTime variable of the transition object
+				currentTween._lastPausedTime = nil
+				currentTween._paused = false
+
+				-- dispatch the onResume method on the object
+				_dispatchControlEvent( currentTween, "onResume" )
+			end
+		end
 	end
 
 end
@@ -477,66 +448,36 @@ end
 -----------------------------------------------------------------------------------------
 lib.cancel = function( whatToCancel )
 
+	-- we use the targetType variable to establish how we iterate at the end of this method
+	local targetType = nil
+	local iterationTarget = nil
+	
 	-- transition object or display object
 	if "table" == type( whatToCancel ) then
-	
 		-- if the .transition field exists, then we have a transition object
 		if nil ~= whatToCancel.transition then
-
-			-- if the transition completed, return
-			if whatToCancel._transitionHasCompleted then
-				return
-			end
-	
-			-- set the transition as completed
-			whatToCancel._transitionHasCompleted = true
-			whatToCancel._transitionHasBeenCancelled = true
-
+			targetType = "transition"
 		-- otherwise, we have a display object
 		else
-			-- insert the object into the cancelled display objects table
-			lib._controlEntities[ #lib._controlEntities + 1 ] = { target = whatToCancel, action = "cancel", type = "displayobject" }
+			targetType = "displayobject"
 		end
-	
 	-- sequence name or tag
 	elseif "string" == type( whatToCancel ) then
-
-		local sequenceFound = false
+		targetType = "tag"
+	-- pause all
+	elseif nil == whatToPause then
+		targetType = "all"
+	end
 	
-		local function f ( k, v )
-			if tostring( k ) == whatToCancel then
-				sequenceFound = true
-			end
+	if "all" ~= targetType then iterationTarget = whatToCancel end
+	-- iterate the table
+	local cancelTable = lib.find( targetType, iterationTarget )
+	if #cancelTable > 0 then
+		for i = 1, #cancelTable do
+			local currentTween = cancelTable[ i ]
+			currentTween._cancelled = true
+			currentTween._transitionHasCompleted = true
 		end
-
-		table.foreach (lib._sequenceTable, f)
-	
-		-- we have a sequence
-		if true == sequenceFound then
-		
-			if nil == lib._sequenceTable[ whatToCancel ] then
-				if true == lib.debugEnabled then
-					error( DEBUG_STRING .. " the sequence name passed to the transition.cancel call does not exist." )
-				end
-			end
-	
-			local currentSequence = lib._sequenceTable[ whatToCancel ]
-	
-			-- pause all the transitions having the sequence object as destination
-			_dispatchTransitionMethod( lib.cancel, function( x ) return x.target == currentSequence.object end )
-			table.remove( lib._sequenceTable, whatToCancel )
-	
-		-- we have a tag
-		else
-			-- dispatch, with filter function for the tag
-			--_dispatchTransitionMethod( lib.cancel, function( x ) return x.tag == whatToCancel end, true )
-			lib._controlEntities[ #lib._controlEntities + 1 ] = { target = whatToCancel, action = "cancel", type = "tag" }
-		end
-	
-	-- resume all
-	elseif nil == whatToCancel then
-		lib._controlEntities[ #lib._controlEntities + 1 ] = { target = nil, action = "cancel", type = "all" }
-		--_dispatchTransitionMethod( lib.cancel, function( x ) return true end )
 	end
 
 end
@@ -554,6 +495,7 @@ lib.enterFrame = function( event )
 	
 	-- create a local copy of the transition table, to avoid a race condition
 	local currentActiveTweens = lib._transitionTable
+	lib._enterFrameTweens = lib._transitionTable
 	lib._transitionTable = {}
 	
 	-- create a local copy of the cancelled display objects table, to avoid a race condition
@@ -570,47 +512,23 @@ lib.enterFrame = function( event )
 	
 		local currentTransitionObject = currentActiveTweens[ i ]
 		
-		-- if the target display object equals one of the objects in the currentControlEntities, mark the transition as paused, resumed or cancelled, and completed if the case
-		
-		if #currentControlEntities > 0 and nil ~= currentTransitionObject.target then
-			for i = 1, #currentControlEntities do
-				
-				-- cancel case, for display objects
-				if currentControlEntities[ i ].target == currentTransitionObject.target and currentControlEntities[ i ].action == "cancel" and currentControlEntities[ i ].type == "displayobject" then
-					currentTransitionObject._transitionHasBeenCancelled = true
-					currentTransitionObject._transitionHasCompleted = true
-				-- cancel case, for tags
-				elseif currentControlEntities[ i ].target == currentTransitionObject.tag and currentControlEntities[ i ].action == "cancel" and currentControlEntities[ i ].type == "tag" then
-					currentTransitionObject._transitionHasBeenCancelled = true
-					currentTransitionObject._transitionHasCompleted = true
-				-- cancel all
-				elseif currentControlEntities[ i ].target == nil and currentControlEntities[ i ].action == "cancel" and currentControlEntities[ i ].type == "all" then
-					currentTransitionObject._transitionHasBeenCancelled = true
-					currentTransitionObject._transitionHasCompleted = true
-				-- pause case, for display objects
-				elseif currentControlEntities[ i ].target == currentTransitionObject.target and currentControlEntities[ i ].action == "pause" and currentControlEntities[ i ].type == "displayobject" then
-					lib.pause( currentTransitionObject )
-				-- pause case, for tags
-				elseif currentControlEntities[ i ].target == currentTransitionObject.tag and currentControlEntities[ i ].action == "pause" and currentControlEntities[ i ].type == "tag" then
-					lib.pause( currentTransitionObject )
-				-- pause all
-				elseif currentControlEntities[ i ].target == nil and currentControlEntities[ i ].action == "pause" and currentControlEntities[ i ].type == "all" then
-					lib.pause( currentTransitionObject )
-				-- resume case, for display objects
-				elseif currentControlEntities[ i ].target == currentTransitionObject.target and currentControlEntities[ i ].action == "resume" and currentControlEntities[ i ].type == "displayobject" then
-					lib.resume( currentTransitionObject )
-				-- resume case, for tags
-				elseif currentControlEntities[ i ].target == currentTransitionObject.tag and currentControlEntities[ i ].action == "resume" and currentControlEntities[ i ].type == "tag" then
-					lib.resume( currentTransitionObject )
-				-- resume all
-				elseif currentControlEntities[ i ].target == nil and currentControlEntities[ i ].action == "resume" and currentControlEntities[ i ].type == "all" then
-					lib.resume( currentTransitionObject )
-				end
+		-- if the transition object is paused
+		if currentTransitionObject._paused then
+			-- handle tweens marked as paused
+			
+			-- only set the pausedTime if that did not happen already
+			if nil == currentTransitionObject._lastPausedTime then
+				-- set the pausedTime to the current time
+				currentTransitionObject._lastPausedTime = system.getTimer()
+	
+				-- dispatch the onPause control event
+				_dispatchControlEvent( currentTransitionObject, "onPause" )
 			end
-		end
-		
-		-- if the object is not paused
-		if nil == currentTransitionObject._lastPausedTime then
+						
+		elseif currentTransitionObject._cancelled then
+			table.insert( completedTransitions, i )
+			_dispatchControlEvent(currentTransitionObject, "onCancel")
+		else
 		
 			-- calculate the time interval passed
 			local passedTimeInterval = eventTime - ( currentTransitionObject._beginTransitionTime + currentTransitionObject.delay )
@@ -670,35 +588,23 @@ lib.enterFrame = function( event )
 					-- if we only have one iteration
 					if currentTransitionObject.iterations == 1 then
 						-- the transition has completed
-						completedTransitions[ #completedTransitions + 1 ] = i
-						if currentTransitionObject._transitionHasBeenCancelled then
-							_dispatchControlEvent(currentTransitionObject, "onCancel")
-						else
-							_dispatchControlEvent( currentTransitionObject, "onComplete" )
-						end
+						table.insert( completedTransitions, i )
+						_dispatchControlEvent( currentTransitionObject, "onComplete" )
 					else
-						if currentTransitionObject._transitionHasBeenCancelled then
-							completedTransitions[ #completedTransitions + 1 ] = i
-							_dispatchControlEvent(currentTransitionObject, "onCancel")
-						else
-							-- we have more iterations
-							currentTransitionObject._transitionHasCompleted = false
-							if currentTransitionObject.iterations > 0 then
-								currentTransitionObject.iterations = currentTransitionObject.iterations-1
-							end
-							currentTransitionObject._beginTransitionTime = currentTransitionObject._beginTransitionTime + currentTransitionObject.time + currentTransitionObject.delay
-							_dispatchControlEvent(currentTransitionObject, "onRepeat")
+						-- we have more iterations
+						currentTransitionObject._transitionHasCompleted = false
+						if currentTransitionObject.iterations > 0 then
+							currentTransitionObject.iterations = currentTransitionObject.iterations-1
 						end
+						currentTransitionObject._beginTransitionTime = currentTransitionObject._beginTransitionTime + currentTransitionObject.time + currentTransitionObject.delay
+						_dispatchControlEvent(currentTransitionObject, "onRepeat")
 					end
 
 				end
 			end
 		end
 	end
-       
-    -- Empty the currentControlEntities table, so that all the previous "all" resume, pause and cancel events are gone.
-    currentControlEntities = {}
-                
+                       
 	-- Remove the transitions that are done
 	for i=#completedTransitions,1,-1 do
 		table.remove(currentActiveTweens, completedTransitions[i])
@@ -714,16 +620,6 @@ lib.enterFrame = function( event )
 	end
 	lib._transitionTable = currentActiveTweens
 	
-	-- restore the lib._controlEntities table by the model above
-	local tmpObjectEntities = lib._controlEntities
-	if #tmpObjectEntities > 0 then
-		for _,object in ipairs( tmpObjectEntities ) do
-			table.insert( currentControlEntities, object )
-		end
-	end
-	lib._controlEntities = currentControlEntities
-                
-	-- Be nice and preserve resources if no transitions can run
 	-- TODO: Should also unregister when there are only paused transitions
 	if #lib._transitionTable == 0 then
 		Runtime:removeEventListener("enterFrame", lib.enterFrame)
@@ -741,25 +637,25 @@ end
 -----------------------------------------------------------------------------------------
 lib.newSequence = function( targetObject, params )
 	if targetObject == nil then
-		if true == lib.debugEnabled then
+		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a target object to a transition.createSequence call." )
 		end
 	end
 	
 	if params == nil then
-		if true == lib.debugEnabled then
+		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a params table to a transition.createSequence call." )
 		end
 	end
 
 	if params.name == nil then
-		if true == lib.debugEnabled then
+		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a name in the params table to a transition.createSequence call." )
 		end
 	end
 
 	if params.transitions == nil then
-		if true == lib.debugEnabled then
+		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a table of transitions in the params table to a transition.createSequence call." )
 		end
 	end
@@ -837,13 +733,13 @@ end
 -----------------------------------------------------------------------------------------
 lib.runSequence = function( sequenceName )
 	if sequenceName == nil then
-		if true == lib.debugEnabled then
+		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a sequence name to a transition.runSequence call." )
 		end
 	end
 	
 	if nil == lib._sequenceTable[ sequenceName ] then
-		if true == lib.debugEnabled then
+		if lib.debugEnabled then
 			error( DEBUG_STRING .. " the sequence name passed to the transition.runSequence call does not exist." )
 		end
 	end	
@@ -867,7 +763,7 @@ end
 -----------------------------------------------------------------------------------------
 lib.blink = function( targetObject, params )
 	if targetObject == nil then
-		if true == lib.debugEnabled then
+		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a target object to a transition.blink call." )
 		end
 	end
@@ -923,7 +819,7 @@ end
 -----------------------------------------------------------------------------------------
 lib.moveTo = function( targetObject, params )
 	if targetObject == nil then
-		if true == lib.debugEnabled then
+		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a target object to a transition.moveTo call." )
 		end
 	end
@@ -975,7 +871,7 @@ lib.moveTo = function( targetObject, params )
 -----------------------------------------------------------------------------------------
 lib.moveBy = function( targetObject, params )
 	if targetObject == nil then
-		if true == lib.debugEnabled then
+		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a target object to a transition.moveBy call." )
 		end
 	end
@@ -1027,7 +923,7 @@ end
 -----------------------------------------------------------------------------------------
 lib.scaleTo = function( targetObject, params )
 	if targetObject == nil then
-		if true == lib.debugEnabled then
+		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a target object to a transition.scaleTo call." )
 		end
 	end
@@ -1079,7 +975,7 @@ end
 -----------------------------------------------------------------------------------------
 lib.scaleBy = function( targetObject, params )
 	if targetObject == nil then
-		if true == lib.debugEnabled then
+		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a target object to a transition.scaleBy call." )
 		end
 	end
@@ -1131,7 +1027,7 @@ end
 -----------------------------------------------------------------------------------------
 lib.fadeIn = function( targetObject, params )
 	if targetObject == nil then
-		if true == lib.debugEnabled then
+		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a target object to a transition.fadeIn call." )
 		end
 	end
@@ -1178,7 +1074,7 @@ end
 -----------------------------------------------------------------------------------------
 lib.fadeOut = function( targetObject, params )
 	if targetObject == nil then
-		if true == lib.debugEnabled then
+		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a target object to a transition.fadeIn call." )
 		end
 	end
