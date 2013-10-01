@@ -173,31 +173,6 @@ local function _dispatchControlEvent( targetObject, controlEvent )
 end
 
 -----------------------------------------------------------------------------------------
--- _dispatchTransitionMethod( methodCalled, filterMethod, reverseTraversal )
--- executes transition lib calls on the transition objects
--- methodCalled can be pause, resume or cancel
--- filterMethod is used to identify specific groups
--- reverseTraversal is used when cancelling all transitions, in which case we traverse the transition table from the end to the beginning, to avoid dependencies
------------------------------------------------------------------------------------------
-local function _dispatchTransitionMethod ( methodCalled, filterMethod, reverseTraversal )
-	if reverseTraversal then
-		for i = #lib._transitionTable, 1, -1 do
-			-- if we don't have a filter method or the filter method matches the current record
-			if nil == filterMethod or filterMethod( lib._transitionTable[ i ] ) then
-				methodCalled( lib._transitionTable[ i ] )
-			end
-		end             
-	else
-		for i = 1, #lib._transitionTable do
-			-- if we don't have a filter method or the filter method matches the current record
-			if nil == filterMethod or filterMethod( lib._transitionTable[ i ] ) then
-				methodCalled( lib._transitionTable[ i ] )
-			end
-		end             
-	end
-end
-
------------------------------------------------------------------------------------------
 -- find( type, target )
 -- iterates the lib._enterFrameTweens variable and returns a table with transitions
 -- that are of the type transitionType ( "transition", "tag", "all" or "displayobject" )
@@ -465,13 +440,14 @@ lib.cancel = function( whatToCancel )
 	elseif "string" == type( whatToCancel ) then
 		targetType = "tag"
 	-- pause all
-	elseif nil == whatToPause then
+	elseif nil == whatToCancel then
 		targetType = "all"
 	end
 	
 	if "all" ~= targetType then iterationTarget = whatToCancel end
 	-- iterate the table
 	local cancelTable = lib.find( targetType, iterationTarget )
+	
 	if #cancelTable > 0 then
 		for i = 1, #cancelTable do
 			local currentTween = cancelTable[ i ]
@@ -527,9 +503,10 @@ lib.enterFrame = function( event )
 						
 		elseif currentTransitionObject._cancelled then
 			table.insert( completedTransitions, i )
+			
+			-- dispatch the onCancel control event
 			_dispatchControlEvent(currentTransitionObject, "onCancel")
 		else
-		
 			-- calculate the time interval passed
 			local passedTimeInterval = eventTime - ( currentTransitionObject._beginTransitionTime + currentTransitionObject.delay )
 			
