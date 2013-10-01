@@ -312,7 +312,7 @@ lib.from = function( targetObject, transitionParams )
 	
 	-- we copy the transition params from the target object and set them as final transition params
 	for k, v in pairs( transitionParams ) do
-		if nil ~= targetObject[ k ] then
+		if targetObject[ k ] then
 			newParams[ k ] = targetObject[ k ]
 			targetObject[ k ] = v
 		else
@@ -337,7 +337,7 @@ lib.pause = function( whatToPause )
 	-- transition object or display object
 	if "table" == type( whatToPause ) then
 		-- if the .transition field exists, then we have a transition object
-		if nil ~= whatToPause.transition then
+		if whatToPause.transition then
 			targetType = "transition"
 		-- otherwise, we have a display object
 		else
@@ -376,7 +376,7 @@ lib.resume = function( whatToResume )
 	-- transition object or display object
 	if "table" == type( whatToResume ) then
 		-- if the .transition field exists, then we have a transition object
-		if nil ~= whatToResume.transition then
+		if whatToResume.transition then
 			targetType = "transition"
 		-- otherwise, we have a display object
 		else
@@ -398,7 +398,7 @@ lib.resume = function( whatToResume )
 		for i = 1, #resumeTable do
 			local currentTween = resumeTable[ i ]
 			-- only if the transition is not completed and was paused
-			if not currentTween._transitionHasCompleted and nil ~= currentTween._lastPausedTime then
+			if not currentTween._transitionHasCompleted and currentTween._lastPausedTime then
 				-- we calculate the time interval the transition was paused for
 				local transitionPausedInterval = system.getTimer() - currentTween._lastPausedTime
 
@@ -430,7 +430,7 @@ lib.cancel = function( whatToCancel )
 	-- transition object or display object
 	if "table" == type( whatToCancel ) then
 		-- if the .transition field exists, then we have a transition object
-		if nil ~= whatToCancel.transition then
+		if whatToCancel.transition then
 			targetType = "transition"
 		-- otherwise, we have a display object
 		else
@@ -554,7 +554,7 @@ lib.enterFrame = function( event )
 					local diff = currentEasing( passedTimeInterval, currentTargetTime, 0, 1 )
 					
 					-- assign the new value to the current parameter
-					if nil ~= currentSourceParams[ i ] then
+					if currentSourceParams[ i ] then
 						currentTarget[ i ] = ( ( x - currentSourceParams[ i ] ) * diff ) + currentSourceParams[ i ]
 					end
 					
