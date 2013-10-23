@@ -547,15 +547,12 @@ lib.enterFrame = function( event )
 				
 				-- the transition time
 				local currentTargetTime = currentTransitionObject.time
-				
+			
 				-- iterate the transition parameters and modify their values accordingly
-				for i, x in pairs( currentTargetParams ) do
-					-- calculate the diff factor (transition progress, values between 0 and 1) based on the easing					
-					local diff = currentEasing( passedTimeInterval, currentTargetTime, 0, 1 )
+				for i, x in pairs( currentSourceParams ) do
 					
-					-- assign the new value to the current parameter
-					if currentSourceParams[ i ] then
-						currentTarget[ i ] = ( ( x - currentSourceParams[ i ] ) * diff ) + currentSourceParams[ i ]
+					if nil ~= currentTarget[i] then
+                         currentTarget[i] = currentEasing( passedTimeInterval, currentTargetTime, x, currentTargetParams[i] - x )
 					end
 					
 				end
