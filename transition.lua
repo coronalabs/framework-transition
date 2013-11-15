@@ -183,9 +183,27 @@ lib.find = function( transitionType, transitionTarget )
 	
 	local foundTransitions = {}
 	
-	if #lib._enterFrameTweens > 0 then
-		for i = 1, #lib._enterFrameTweens do
-			local currentTween = lib._enterFrameTweens[ i ]
+	-- we localize the table of all active transitions. To catch the case in which a transition is cancelled before enterFrame runs.
+	local tempTransTable = lib._transitionTable
+	
+	-- we localize the table of transitions that gets created in enterframe
+	local libEnterFrameTable = lib._enterFrameTweens
+	
+	-- if the table of active transitions contains items, and if the libEnterFrameTable does not contain already those transitions,
+	-- we add the items to libEnterFrameTable
+	
+	if #tempTransTable > 0 then
+		for i = 1, #tempTransTable do
+			if not table.indexOf( libEnterFrameTable, tempTransTable[ i ] ) then
+				table.insert( libEnterFrameTable, tempTransTable[ i ] )
+			end
+		end
+	end
+
+	-- if we have transitions in the final table, process them
+	if #libEnterFrameTable > 0 then
+		for i = 1, #libEnterFrameTable do
+			local currentTween = libEnterFrameTable[ i ]
 			if "transition" == transitionType and transitionTarget == currentTween then
 				table.insert( foundTransitions, currentTween )
 			elseif "tag" == transitionType and transitionTarget == currentTween.tag then
