@@ -26,9 +26,6 @@ local DEBUG_STRING = "Transition 2.0: "
 -- a table holding all transitions, active or paused
 lib._transitionTable = {}
 
--- a table holding all display objects, sequences and tags that are to be cancelled, resumed and paused
-lib._controlEntities = {}
-
 -- a table holding all the transitions, to be iterated by the pause / resume / cancel methods
 lib._enterFrameTweens = {}
 
@@ -39,10 +36,24 @@ lib._sequenceTable = {}
 lib._prevSuspendTime = 0
 
 -- control variable for the runtime listener
-lib._didAddRuntimeListener = false
+lib._hasEventListener = false
 
 -- reserved properties that cannot be transitioned
-lib._reservedProperties = {"time", "delay", "delta", "iterations", "tag", "transition", "onComplete", "onPause", "onResume", "onCancel", "onRepeat", "onStart" }
+lib._reservedProperties =
+{
+	time = true, delay = true, delta = true, iterations = true, tag = true, transition = true,
+	onComplete = true, onPause = true, onResume = true, onCancel = true, onRepeat = true, onStart = true
+}
+
+-- keys that have a number value
+lib._numberKeys = 
+{
+	x=true, y=true, xScale=true, yScale=true, rotation=true, width=true, height=true, 
+	alpha=true, 
+	xReference=true, yReference=true, 
+	maskX=true, maskY=true, maskScaleX=true, maskScaleY=true, maskRotation=true,
+	delta=true,
+}
 
 lib.debugEnabled = false
 
@@ -51,61 +62,11 @@ lib.debugEnabled = false
 -----------------------------------------------------------------------------------------
 
 -----------------------------------------------------------------------------------------
--- _deepCopyObjectParameters( sourceObject, sourceParams, withDelta )
--- copies all the parameters of an object to a table it returns, with filtering of 
--- reserved properties and adjustments of delta values
------------------------------------------------------------------------------------------
-local function _deepCopyObjectParameters ( sourceObject, sourceParams, withDelta )
-	-- temporary copy table
-	local copyTable = {}
-
-	-- we copy all the source object's properties
-	for k, v in pairs( sourceObject ) do
-		-- TODO: There should be validation of values, as is done in the 1.0 library
-		-- See the following in the 1.0 library:
-		--   transition._nonPropertyKeys
-		--   validateValue()
-		copyTable[ k ] = sourceObject[ k ]
-	end
-
-	-- TODO: This is less efficient than 1.0 implementation
-    -- if any of the copied properties is reserved, we set it to nil    
-	for i = 1, #lib._reservedProperties do
-		copyTable[ lib._reservedProperties[ i ] ] = nil
-	end
-	
-	-- if delta was passed in, we add the source param value to the temporary copy table respective values
-	if withDelta then
-		for k, v in pairs( copyTable ) do
-			copyTable[ k ] = copyTable[ k ] + sourceParams[ k ]
-		end
-	end
-	
-	return copyTable
-end
-
------------------------------------------------------------------------------------------
--- _deepCopyParameters( sourceObject, sourceParams )
--- copies all the start parameters of an object to a table it returns
------------------------------------------------------------------------------------------ 
-local function _deepCopyParameters ( sourceObject, sourceParams )
-	-- temporary copy table
-	local copyTable = {}
-	
-	-- loop and copy all the source parameters
-	for k, v in pairs( sourceParams ) do
-		copyTable[ k ] = sourceObject[ k ]
-	end
-	
-	return copyTable
-end
-
------------------------------------------------------------------------------------------
 -- _validateValue( k, v )
 -- validates input values. Ensures they are number format
 ----------------------------------------------------------------------------------------- 
 local function _validateValue( k, v )
-	if ( "number" == type( v ) and numberKeys[k] ) then
+	if ( "number" == type( v ) and lib._numberKeys[k] ) then
 		local isNan = ( v ~= v )
 		if ( isNan ) then
 			print( "ERROR: Invalid number argument provided. Attempt to set property " .. k .. " to NaN." )
@@ -117,18 +78,65 @@ local function _validateValue( k, v )
 end
 
 -----------------------------------------------------------------------------------------
--- _createTransitionObjectProperties( sourceParams, keywordList )
--- creates a table containing all the needed properties to operate a transition on an object (see transition.to below)
------------------------------------------------------------------------------------------
-local function _createTransitionObjectProperties( sourceParams, keywordList )
-	-- temporary copy table
-	local copyTable = {}
-	for i = 1, #keywordList do
-		-- TODO: if sourceParams[] returns nil, then grab the value from 
-		-- a _defaultParams table.
-		copyTable[ keywordList[ i ] ] = sourceParams[ keywordList[ i ] ]
+-- copyTable( src )
+-- copies the contents of a table to another table
+----------------------------------------------------------------------------------------- 
+local function _copyTable( src )
+	local t = {}
+
+	for k,v in pairs( src ) do
+		t[k] = v
 	end
-	return copyTable
+
+	return t
+end
+
+-----------------------------------------------------------------------------------------
+-- _initTween( tween, parameters )
+-- assigns the start and end values of a tween, accounting for delta and valid values 
+-----------------------------------------------------------------------------------------
+lib._initTween = function( tween, parameters )
+	local target = tween._target
+	local listener = tween._onStart
+	if listener then
+		Runtime.callListener( listener, "onStart", target )
+		tween._onStart = nil -- only call once
+	end
+
+	local keysStart = {}
+	local keysFinish = {}
+	local invalidKeys = lib._reservedProperties
+	local isDeltaValue = _validateValue( "delta", parameters.delta )
+	for k,v in pairs( parameters ) do
+		if not lib._reservedProperties[k] then
+			-- Only tween properties that have a non-nil starting value
+			local startValue = target[k]
+			if startValue then
+				keysStart[k] = startValue
+				local finishValue = (isDeltaValue and (startValue+v)) or v
+				keysFinish[k] = _validateValue( k, finishValue )
+			end
+		end
+	end
+	tween._keysStart = keysStart
+	tween._keysFinish = keysFinish
+end
+
+-----------------------------------------------------------------------------------------
+-- _addTween( tween )
+-- inserts a tween to the active tweens table. Sets up the enterFrame listener if
+-- the added tween is the first one
+-----------------------------------------------------------------------------------------
+lib._addTween = function( tween )
+	local activeTweens = lib._transitionTable
+
+	-- Once we have at least one tween, register for frame events
+	if #activeTweens == 0 and not transition._hasEventListener then
+		lib._hasEventListener = true
+		Runtime:addEventListener( "enterFrame", lib )
+	end
+
+	table.insert( activeTweens, tween )
 end
 
 -----------------------------------------------------------------------------------------
@@ -151,38 +159,18 @@ local function _handleSuspendResume( event )
 		for i = 1, #lib._transitionTable do
 			-- only do this for non-completed transitions
 			if not lib._transitionTable[ i ]._transitionHasCompleted then
-				lib._transitionTable[ i ]._beginTransitionTime = lib._transitionTable[ i ]._beginTransitionTime + nextSuspendedTime
+				lib._transitionTable[ i ]._timeStart = lib._transitionTable[ i ]._timeStart + nextSuspendedTime
 			end
 		end
 	end
 end
 
 -----------------------------------------------------------------------------------------
--- _dispatchControlEvent( targetObject, controlEvent )
--- if the controlEvent is defined in the transition object, this function dispatches that event
--- control Events: onComplete, onPause, onResume, onCancel, onRepeat, onStart
------------------------------------------------------------------------------------------ 
-local function _dispatchControlEvent( targetObject, controlEvent )
-	-- if the transition object does not contain this event, return
-	if nil == targetObject[ controlEvent ] then
-		return
-	end
-	
-	-- if it does, execute it, sending the object as event (so we can use event.target)
-	targetObject[ controlEvent ]( targetObject.target )
-end
-
+-- _gatherTransitions()
+-- gathers the contents of the cached _enterFrameTweens transition table
+-- adds to it any transitions that might be in the active transition table (lib._transitionTable)
 -----------------------------------------------------------------------------------------
--- find( type, target )
--- iterates the lib._enterFrameTweens variable and returns a table with transitions
--- that are of the type transitionType ( "transition", "tag", "all" or "displayobject" )
--- and have the target transitionTarget( transition object for transition, string for tag, 
--- nil for all and object for displayobject )
------------------------------------------------------------------------------------------
-lib.find = function( transitionType, transitionTarget )
-	
-	local foundTransitions = {}
-	
+lib._gatherTransitions = function()
 	-- we localize the table of all active transitions. To catch the case in which a transition is cancelled before enterFrame runs.
 	local tempTransTable = lib._transitionTable
 	
@@ -199,7 +187,23 @@ lib.find = function( transitionType, transitionTarget )
 			end
 		end
 	end
+	
+	return libEnterFrameTable
+end
 
+-----------------------------------------------------------------------------------------
+-- find( type, target )
+-- iterates the lib._enterFrameTweens variable and returns a table with transitions
+-- that are of the type transitionType ( "transition", "tag", "all" or "displayobject" )
+-- and have the target transitionTarget( transition object for transition, string for tag, 
+-- nil for all and object for displayobject )
+-----------------------------------------------------------------------------------------
+lib._find = function( transitionType, transitionTarget )
+	
+	local foundTransitions = {}
+	
+	local libEnterFrameTable = lib._gatherTransitions()
+	
 	-- if we have transitions in the final table, process them
 	if #libEnterFrameTable > 0 then
 		for i = 1, #libEnterFrameTable do
@@ -237,75 +241,45 @@ lib.to = function( targetObject, transitionParams )
 		end
 	end
 
-	-- TODO: Assignment of defaults should be done in _createTransitionObjectProperties
+	local tween = nil
 
-	local transitionObject = nil
-
-	-- execute only if both targetObject and transitionParams are set
 	if targetObject and transitionParams then
+		-- faster to access a local timer var than a global one
+		local lib = lib
 
-		-- Copy all the needed properties to the transition object
-		transitionObject = _createTransitionObjectProperties( transitionParams, lib._reservedProperties )
+		tween = {}
+		local t = system.getTimer()
+		tween._target = targetObject
 
-		-- Create the object properties we need in order to operate the transition properly
-		-- The last time the transition was paused at
-		transitionObject._lastPausedTime = nil
+		tween._timeStart = t
+		tween._duration = transitionParams.time or 500
+		tween.iterations = transitionParams.iterations or 1
+		tween._lastPausedTime = nil
+		tween._transition = transitionParams.transition or easing.linear
+		tween._onStart = Runtime.verifyListener( transitionParams.onStart, "onStart" )
+		tween._onComplete = Runtime.verifyListener( transitionParams.onComplete, "onComplete" )
+		tween._onPause = Runtime.verifyListener( transitionParams.onPause, "onPause" )
+		tween._onResume = Runtime.verifyListener( transitionParams.onResume, "onResume" )
+		tween._onCancel = Runtime.verifyListener( transitionParams.onCancel, "onCancel" )
+		tween._onRepeat = Runtime.verifyListener( transitionParams.onRepeat, "onRepeat" )
 
-		-- Transition has completed control variable
-		transitionObject._transitionHasCompleted = false
-
-		-- The transition target object (used for event dispatch)
-		transitionObject.target = targetObject
-
-		-- The transition object begin time
-		transitionObject._beginTransitionTime = system.getTimer()
-
-		-- The transition object target parameters ( the end params )
-		transitionObject._transitionTarget = _deepCopyObjectParameters( transitionParams )
-
-		-- The transition object source parameters ( the begin params )
-		transitionObject._transitionSource = nil
-
-		-- The transition time ( specified in the params )
-		if nil == transitionObject.time then
-			transitionObject.time = 500
+		local delay = transitionParams.delay
+		if type(delay) == "number" then
+			tween._delay = delay
+			-- save off params: init after delay to minimize race conditions
+			local params = _copyTable( transitionParams )
+			tween._delayParams = params
+		else
+			-- no delay, so init immediately
+			lib._initTween( tween, transitionParams )
 		end
 
-		if transitionObject.time == 0 then transitionObject.time = 0.1 end
-
-		-- The transition delay ( specified in the params )
-		if nil == transitionObject.delay then
-			transitionObject.delay = 0
-		end
-
-		-- The transition easing ( specified in the params )	
-		if nil == transitionObject.transition then
-			transitionObject.transition = easing.linear
-		end
-
-		-- TODO: This is not needed. 'nil' is equivalent to 'false'
-		-- The transition delta ( specified in the params )
-		if nil == transitionObject.delta then
-			transitionObject.delta = false
-		end
-
-		-- The transition number of iterations ( specified in the params )
-		if nil == transitionObject.iterations or 0 == transitionObject.iterations then
-			transitionObject.iterations = 1
-		end
-
-		-- Insert the object in the transition table
-		table.insert( lib._transitionTable, transitionObject )
-
-		-- If we don't have a runtime listener, add it
-		if not lib._didAddRuntimeListener then
-			Runtime:addEventListener( "enterFrame", lib.enterFrame )
-			lib._didAddRuntimeListener = "true"
-		end
-
+		lib._addTween( tween )
 	end
 
-	return transitionObject
+	return tween
+
+
 	
 end
 
@@ -351,11 +325,12 @@ lib.pause = function( whatToPause )
 	-- we use the targetType variable to establish how we iterate at the end of this method
 	local targetType = nil
 	local iterationTarget = nil
+	local libEnterFrameTable = lib._gatherTransitions()
 	
 	-- transition object or display object
 	if "table" == type( whatToPause ) then
 		-- if the .transition field exists, then we have a transition object
-		if whatToPause.transition then
+		if table.indexOf( libEnterFrameTable, whatToPause ) then
 			targetType = "transition"
 		-- otherwise, we have a display object
 		else
@@ -371,7 +346,7 @@ lib.pause = function( whatToPause )
 	
 	if "all" ~= targetType then iterationTarget = whatToPause end
 	-- iterate the table
-	local pauseTable = lib.find( targetType, iterationTarget )
+	local pauseTable = lib._find( targetType, iterationTarget )
 	if #pauseTable > 0 then
 		for i = 1, #pauseTable do
 			local currentTween = pauseTable[ i ]
@@ -390,11 +365,12 @@ lib.resume = function( whatToResume )
 	-- we use the targetType variable to establish how we iterate at the end of this method
 	local targetType = nil
 	local iterationTarget = nil
-
+	local libEnterFrameTable = lib._gatherTransitions()
+	
 	-- transition object or display object
 	if "table" == type( whatToResume ) then
 		-- if the .transition field exists, then we have a transition object
-		if whatToResume.transition then
+		if table.indexOf( libEnterFrameTable, whatToResume ) then
 			targetType = "transition"
 		-- otherwise, we have a display object
 		else
@@ -411,7 +387,7 @@ lib.resume = function( whatToResume )
 	if "all" ~= targetType then iterationTarget = whatToResume end
 	-- iterate the table
 	
-	local resumeTable = lib.find( targetType, iterationTarget )
+	local resumeTable = lib._find( targetType, iterationTarget )
 	if #resumeTable > 0 then
 		for i = 1, #resumeTable do
 			local currentTween = resumeTable[ i ]
@@ -421,14 +397,18 @@ lib.resume = function( whatToResume )
 				local transitionPausedInterval = system.getTimer() - currentTween._lastPausedTime
 
 				-- we adjust the transition object's begin transition variable with the calculated time interval
-				currentTween._beginTransitionTime = currentTween._beginTransitionTime + transitionPausedInterval
+				currentTween._timeStart = currentTween._timeStart + transitionPausedInterval
 
 				-- nil out the lastPausedTime variable of the transition object
 				currentTween._lastPausedTime = nil
 				currentTween._paused = false
 
 				-- dispatch the onResume method on the object
-				_dispatchControlEvent( currentTween, "onResume" )
+				local listener = currentTween._onResume
+				if listener then
+					local target = currentTween._target
+					Runtime.callListener( listener, "onResume", target )
+				end
 			end
 		end
 	end
@@ -444,11 +424,12 @@ lib.cancel = function( whatToCancel )
 	-- we use the targetType variable to establish how we iterate at the end of this method
 	local targetType = nil
 	local iterationTarget = nil
+	local libEnterFrameTable = lib._gatherTransitions()
 	
 	-- transition object or display object
 	if "table" == type( whatToCancel ) then
 		-- if the .transition field exists, then we have a transition object
-		if whatToCancel.transition then
+		if table.indexOf( libEnterFrameTable, whatToCancel ) then
 			targetType = "transition"
 		-- otherwise, we have a display object
 		else
@@ -464,7 +445,7 @@ lib.cancel = function( whatToCancel )
 	
 	if "all" ~= targetType then iterationTarget = whatToCancel end
 	-- iterate the table
-	local cancelTable = lib.find( targetType, iterationTarget )
+	local cancelTable = lib._find( targetType, iterationTarget )
 	
 	if #cancelTable > 0 then
 		for i = 1, #cancelTable do
@@ -476,25 +457,20 @@ lib.cancel = function( whatToCancel )
 
 end
 
--- TODO: This should be renamed to _enterFrame, or better yet use a table listener
 -- function lib:enterFrame(), and then Runtime:addEventListener( "enterFrame", lib )
 -----------------------------------------------------------------------------------------
 -- enterFrame( event )
 -- the frame listener for the transitions
 -----------------------------------------------------------------------------------------
-lib.enterFrame = function( event )
-
-	-- get the current event time
-	local eventTime = event.time
+function lib:enterFrame ( event )
 	
 	-- create a local copy of the transition table, to avoid a race condition
 	local currentActiveTweens = lib._transitionTable
 	lib._enterFrameTweens = lib._transitionTable
 	lib._transitionTable = {}
 	
-	-- create a local copy of the cancelled display objects table, to avoid a race condition
-	local currentControlEntities = lib._controlEntities
-	lib._controlEntities = {}
+	-- get the current event time
+	local currentTime = event.time
 	
 	-- create a local completed transitions table which we will empty at the end of the function's execution
 	local completedTransitions = {}
@@ -502,99 +478,93 @@ lib.enterFrame = function( event )
 	-- create a local 
 	
 	-- iterate the transition table
-	for i=1, #currentActiveTweens do 
-	
-		local currentTransitionObject = currentActiveTweens[ i ]
+	for i,tween in ipairs( currentActiveTweens ) do 
 		
 		-- if the transition object is paused
-		if currentTransitionObject._paused then
+		if tween._paused then
 			-- handle tweens marked as paused
 			
 			-- only set the pausedTime if that did not happen already
-			if nil == currentTransitionObject._lastPausedTime then
+			if nil == tween._lastPausedTime then
 				-- set the pausedTime to the current time
-				currentTransitionObject._lastPausedTime = system.getTimer()
+				tween._lastPausedTime = system.getTimer()
 	
 				-- dispatch the onPause control event
-				_dispatchControlEvent( currentTransitionObject, "onPause" )
+				local listener = tween._onPause
+				if listener then
+					local target = tween._target
+					Runtime.callListener( listener, "onPause", target )
+				end
 			end
 						
-		elseif currentTransitionObject._cancelled then
+		elseif tween._cancelled then
 			table.insert( completedTransitions, i )
 			
 			-- dispatch the onCancel control event
-			_dispatchControlEvent(currentTransitionObject, "onCancel")
+			local listener = tween._onCancel
+			if listener then
+				local target = tween._target
+				Runtime.callListener( listener, "onCancel", target )
+			end
 		else
-			-- calculate the time interval passed
-			local passedTimeInterval = eventTime - ( currentTransitionObject._beginTransitionTime + currentTransitionObject.delay )
-			
-			-- if we have a time interval
-			if passedTimeInterval > 0 then
+			local delay = tween._delay
+			if delay and ( currentTime >= (tween._timeStart + delay) ) then
+				tween._delay = nil
+				tween._timeStart = currentTime
+				delay = nil
+			end
 
-				-- if we don't have source parameters for the current object, we create them, keeping account of delta
-				if nil == currentTransitionObject._transitionSource then
-					-- dispatch the onStart event on the transition object
-					-- NOTE: This must be called prior to caching the source params
-					_dispatchControlEvent( currentTransitionObject, "onStart" )
+			if not delay then
+				local params = tween._delayParams
+				if params then
+					transition._initTween( tween, params )
+					tween._delayParams = nil
+				end
 
-					currentTransitionObject._transitionSource = _deepCopyParameters( currentTransitionObject.target, currentTransitionObject._transitionTarget )
-					if currentTransitionObject.delta then
-						currentTransitionObject._transitionTarget = _deepCopyObjectParameters( currentTransitionObject._transitionTarget, currentTransitionObject.target, currentTransitionObject.delta)
+				local target = tween._target
+				local keysFinish = tween._keysFinish
+				local t = currentTime - tween._timeStart
+				if t < 0 then t = 0 end
+				local tMax = tween._duration
+				if t < tMax then
+					for k,v in pairs( tween._keysStart ) do
+						target[k] = tween._transition( t, tMax, v, keysFinish[k] - v )
 					end
-				end
-
-				-- if the passed time interval is greater than the transition time, set it to that value and complete the transition
-				if passedTimeInterval >= currentTransitionObject.time then
-					passedTimeInterval = currentTransitionObject.time 
-					currentTransitionObject._transitionHasCompleted = true
-				end
-				
-				-- localize the parameters, to gain performance
-				
-				-- the transition object's target
-				local currentTarget = currentTransitionObject.target
-				
-				-- the transition object's easing
-				local currentEasing = currentTransitionObject.transition
-
-				-- the transition source parameters
-				local currentSourceParams = currentTransitionObject._transitionSource
-				
-				-- the transition target parameters
-				local currentTargetParams = currentTransitionObject._transitionTarget
-				
-				-- the transition time
-				local currentTargetTime = currentTransitionObject.time
-			
-				-- iterate the transition parameters and modify their values accordingly
-				for i, x in pairs( currentSourceParams ) do
-					
-					if nil ~= currentTarget[i] then
-                         currentTarget[i] = currentEasing( passedTimeInterval, currentTargetTime, x, currentTargetParams[i] - x )
+				else
+					for k,v in pairs( keysFinish ) do
+						target[k] = v
 					end
 					
-				end
-                                        
-				-- treat the iterations
-				if currentTransitionObject._transitionHasCompleted then
-					-- if we only have one iteration
-					if currentTransitionObject.iterations == 1 then
+					if tween.iterations == 1 then
 						-- the transition has completed
+						-- onComplete listener
+						local listener = tween._onComplete
+						if listener then
+							Runtime.callListener( listener, "onComplete", target )
+						end
+
+						-- queue up complete tween for removal
 						table.insert( completedTransitions, i )
-						_dispatchControlEvent( currentTransitionObject, "onComplete" )
 					else
 						-- we have more iterations
-						currentTransitionObject._transitionHasCompleted = false
-						if currentTransitionObject.iterations > 0 then
-							currentTransitionObject.iterations = currentTransitionObject.iterations-1
+						tween._transitionHasCompleted = false
+						if tween.iterations > 0 then
+							tween.iterations = tween.iterations-1
 						end
-						currentTransitionObject._beginTransitionTime = currentTransitionObject._beginTransitionTime + currentTransitionObject.time + currentTransitionObject.delay
-						_dispatchControlEvent(currentTransitionObject, "onRepeat")
+						tween._timeStart = tween._timeStart + tMax
+						-- onRepeat listener
+						local listener = tween._onRepeat
+						if listener then
+							Runtime.callListener( listener, "onRepeat", target )
+						end
 					end
+					
 
 				end
 			end
+                                        
 		end
+
 	end
                        
 	-- Remove the transitions that are done
@@ -613,9 +583,9 @@ lib.enterFrame = function( event )
 	lib._transitionTable = currentActiveTweens
 	
 	-- TODO: Should also unregister when there are only paused transitions
-	if #lib._transitionTable == 0 then
-		Runtime:removeEventListener("enterFrame", lib.enterFrame)
-		lib._didAddRuntimeListener = false
+	if #currentActiveTweens == 0 then
+		Runtime:removeEventListener( "enterFrame", lib )
+		lib._hasEventListener = false
 	end
 end
 
