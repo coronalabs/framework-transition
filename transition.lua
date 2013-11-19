@@ -131,7 +131,7 @@ lib._addTween = function( tween )
 	local activeTweens = lib._transitionTable
 
 	-- Once we have at least one tween, register for frame events
-	if #activeTweens == 0 and not transition._hasEventListener then
+	if #activeTweens == 0 and not lib._hasEventListener then
 		lib._hasEventListener = true
 		Runtime:addEventListener( "enterFrame", lib )
 	end
@@ -517,7 +517,7 @@ function lib:enterFrame ( event )
 			if not delay then
 				local params = tween._delayParams
 				if params then
-					transition._initTween( tween, params )
+					lib._initTween( tween, params )
 					tween._delayParams = nil
 				end
 
