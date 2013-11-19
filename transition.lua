@@ -214,7 +214,7 @@ lib._find = function( transitionType, transitionTarget )
 				table.insert( foundTransitions, currentTween )
 			elseif "all" == transitionType and nil == transitionTarget then
 				table.insert( foundTransitions, currentTween )
-			elseif "displayobject" == transitionType and transitionTarget == currentTween.target then
+			elseif "displayobject" == transitionType and transitionTarget == currentTween._target then
 				table.insert( foundTransitions, currentTween )
 			end
 		end
@@ -254,6 +254,7 @@ lib.to = function( targetObject, transitionParams )
 		tween._timeStart = t
 		tween._duration = transitionParams.time or 500
 		tween.iterations = transitionParams.iterations or 1
+		tween.tag = transitionParams.tag or ""
 		tween._lastPausedTime = nil
 		tween._transition = transitionParams.transition or easing.linear
 		tween._onStart = Runtime.verifyListener( transitionParams.onStart, "onStart" )
