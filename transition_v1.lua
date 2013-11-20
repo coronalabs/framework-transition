@@ -5,7 +5,7 @@
 -- Copyright (C) 2013 Corona Labs Inc. All Rights Reserved.
 --
 -------------------------------------------------------------------------------
-print("v1")
+
 -- copies all key/value pairs
 local function copyTable( src )
 	local t = {}
