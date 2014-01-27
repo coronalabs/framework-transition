@@ -305,11 +305,15 @@ lib.from = function( targetObject, transitionParams )
 	
 	-- we copy the transition params from the target object and set them as final transition params
 	for k, v in pairs( transitionParams ) do
-		if targetObject[ k ] then
-			newParams[ k ] = targetObject[ k ]
-			targetObject[ k ] = v
+		if transitionParams.delta then
+			newParams = transitionParams
 		else
-			newParams[ k ] = v
+			if targetObject[ k ] then
+				newParams[ k ] = targetObject[ k ]
+				targetObject[ k ] = v
+			else
+				newParams[ k ] = v
+			end
 		end
 	end
                 
