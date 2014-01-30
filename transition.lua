@@ -536,8 +536,19 @@ function lib:enterFrame ( event )
 						target[k] = tween._transition( t, tMax, v, keysFinish[k] - v )
 					end
 				else
-					for k,v in pairs( keysFinish ) do
-						target[k] = v
+					-- the easing function easing.continuousLoop with infinite iterations cannot set the object keys to the finish values.
+					-- also, the last iteration of a transition with easing.continousLoop has to return the object to the start properties,
+					-- not to the end ones.
+					if tween._transition == easing.continuousLoop then
+						if tween.iterations == 1 then
+							for k, v in pairs( tween._keysStart ) do
+								target[k] = v
+							end
+						end
+					else
+						for k,v in pairs( keysFinish ) do
+							target[k] = v
+						end
 					end
 					
 					if tween.iterations == 1 then
