@@ -746,14 +746,8 @@ lib.blink = function( targetObject, params )
 	local actionOnCancel = paramsTable.onCancel or nil
 	local actionOnStart = paramsTable.onStart or nil
 	local actionOnRepeat = paramsTable.onRepeat or nil
-	local actionXScale = paramsTable.xScale or targetObject.xScale
-	local actionYScale = paramsTable.yScale or targetObject.yScale
-	local actionAlpha = paramsTable.alpha or targetObject.alpha
 	local actionTag = paramsTable.tag or nil
 	local actionTime = actionTime or 500
-	local actionDelay = actionDelay or 0
-	local actionX = x or targetObject.x
-	local actionY = y or targetObject.y
 	
 	local addedTransition = lib.to( targetObject, 
 	{
@@ -768,10 +762,6 @@ lib.blink = function( targetObject, params )
 		onStart = actionOnStart,
 		onRepeat = actionOnRepeat,
 		alpha = 0,
-		xScale = actionXScale,
-		yScale = actionYScale,
-		x = actionX,
-		y = actionY,
 		tag = actionTag
 	} )
 		--local addedTransition = lib.to( targetObject, { time = actionTime * 0.5, alpha = 0, transition="continuousLoop", iterations = -1 } )
