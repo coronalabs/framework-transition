@@ -303,17 +303,25 @@ lib.from = function( targetObject, transitionParams )
 
 	local newParams = {}
 	
+	local isDelta = transitionParams.delta
+	
 	-- we copy the transition params from the target object and set them as final transition params
 	for k, v in pairs( transitionParams ) do
-		if transitionParams.delta then
-			newParams = transitionParams
-		else
-			if targetObject[ k ] then
-				newParams[ k ] = targetObject[ k ]
-				targetObject[ k ] = v
+		if targetObject[ k ] then
+
+			local startPos, endPos
+			if isDelta then
+				endPos = - v
+				startPos = v + targetObject[ k ]
 			else
-				newParams[ k ] = v
+				endPos = targetObject[ k ]
+				startPos = v
 			end
+
+			newParams[ k ] = endPos
+			targetObject[ k ] = startPos
+		else
+			newParams[ k ] = v
 		end
 	end
                 
