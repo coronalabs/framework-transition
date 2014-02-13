@@ -303,11 +303,23 @@ lib.from = function( targetObject, transitionParams )
 
 	local newParams = {}
 	
+	local isDelta = transitionParams.delta
+	
 	-- we copy the transition params from the target object and set them as final transition params
 	for k, v in pairs( transitionParams ) do
 		if targetObject[ k ] then
-			newParams[ k ] = targetObject[ k ]
-			targetObject[ k ] = v
+
+			local startPos, endPos
+			if isDelta then
+				endPos = - v
+				startPos = v + targetObject[ k ]
+			else
+				endPos = targetObject[ k ]
+				startPos = v
+			end
+
+			newParams[ k ] = endPos
+			targetObject[ k ] = startPos
 		else
 			newParams[ k ] = v
 		end
@@ -532,8 +544,19 @@ function lib:enterFrame ( event )
 						target[k] = tween._transition( t, tMax, v, keysFinish[k] - v )
 					end
 				else
-					for k,v in pairs( keysFinish ) do
-						target[k] = v
+					-- the easing function easing.continuousLoop with infinite iterations cannot set the object keys to the finish values.
+					-- also, the last iteration of a transition with easing.continousLoop has to return the object to the start properties,
+					-- not to the end ones.
+					if tween._transition == easing.continuousLoop then
+						if tween.iterations == 1 then
+							for k, v in pairs( tween._keysStart ) do
+								target[k] = v
+							end
+						end
+					else
+						for k,v in pairs( keysFinish ) do
+							target[k] = v
+						end
 					end
 					
 					if tween.iterations == 1 then
@@ -742,14 +765,8 @@ lib.blink = function( targetObject, params )
 	local actionOnCancel = paramsTable.onCancel or nil
 	local actionOnStart = paramsTable.onStart or nil
 	local actionOnRepeat = paramsTable.onRepeat or nil
-	local actionXScale = paramsTable.xScale or targetObject.xScale
-	local actionYScale = paramsTable.yScale or targetObject.yScale
-	local actionAlpha = paramsTable.alpha or targetObject.alpha
 	local actionTag = paramsTable.tag or nil
 	local actionTime = actionTime or 500
-	local actionDelay = actionDelay or 0
-	local actionX = x or targetObject.x
-	local actionY = y or targetObject.y
 	
 	local addedTransition = lib.to( targetObject, 
 	{
@@ -764,10 +781,6 @@ lib.blink = function( targetObject, params )
 		onStart = actionOnStart,
 		onRepeat = actionOnRepeat,
 		alpha = 0,
-		xScale = actionXScale,
-		yScale = actionYScale,
-		x = actionX,
-		y = actionY,
 		tag = actionTag
 	} )
 		--local addedTransition = lib.to( targetObject, { time = actionTime * 0.5, alpha = 0, transition="continuousLoop", iterations = -1 } )
