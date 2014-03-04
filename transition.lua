@@ -171,46 +171,24 @@ end
 -- adds to it any transitions that might be in the active transition table (lib._transitionTable)
 -----------------------------------------------------------------------------------------
 lib._gatherTransitions = function()
-
-	local libEnterFrameTable
-	-- if we already ran enterFrame for at least one time
-	if #lib._enterFrameTweens > 0 then
-		libEnterFrameTable = lib._enterFrameTweens
-	-- otherwise, we are still before enterFrame
-	else
-		libEnterFrameTable = lib._transitionTable
+	-- we localize the table of all active transitions. To catch the case in which a transition is cancelled before enterFrame runs.
+	local tempTransTable = lib._transitionTable
+	
+	-- we localize the table of transitions that gets created in enterframe
+	local libEnterFrameTable = lib._enterFrameTweens
+	
+	-- if the table of active transitions contains items, and if the libEnterFrameTable does not contain already those transitions,
+	-- we add the items to libEnterFrameTable
+	
+	if #tempTransTable > 0 then
+		for i = 1, #tempTransTable do
+			if not table.indexOf( libEnterFrameTable, tempTransTable[ i ] ) then
+				table.insert( libEnterFrameTable, tempTransTable[ i ] )
+			end
+		end
 	end
 	
 	return libEnterFrameTable
-end
-
------------------------------------------------------------------------------------------
--- _findInTable()
--- gathers the contents of the cached _enterFrameTweens transition table
--- adds to it any transitions that might be in the active transition table (lib._transitionTable)
------------------------------------------------------------------------------------------
-lib._findInTable = function( srcTable, transitionType, transitionTarget )
-    
-    local foundTransitions = {}
-   
-    -- if we have transitions in the final table, process them
-    if #srcTable > 0 then
-        for i = 1, #srcTable do
-            local currentTween = srcTable[ i ]
-            if "transition" == transitionType and transitionTarget == currentTween then
-                table.insert( foundTransitions, currentTween )
-            elseif "tag" == transitionType and transitionTarget == currentTween.tag then
-                table.insert( foundTransitions, currentTween )
-            elseif "all" == transitionType and nil == transitionTarget then
-                table.insert( foundTransitions, currentTween )
-            elseif "displayobject" == transitionType and transitionTarget == currentTween._target then
-                table.insert( foundTransitions, currentTween )
-            end
-        end
-    end
-    
-    return foundTransitions
-    
 end
 
 -----------------------------------------------------------------------------------------
@@ -221,10 +199,29 @@ end
 -- nil for all and object for displayobject )
 -----------------------------------------------------------------------------------------
 lib._find = function( transitionType, transitionTarget )
-    
-    local libEnterFrameTable = lib._gatherTransitions()
-
-    return lib._findInTable( libEnterFrameTable, transitionType, transitionTarget )    
+	
+	local foundTransitions = {}
+	
+	local libEnterFrameTable = lib._gatherTransitions()
+	
+	-- if we have transitions in the final table, process them
+	if #libEnterFrameTable > 0 then
+		for i = 1, #libEnterFrameTable do
+			local currentTween = libEnterFrameTable[ i ]
+			if "transition" == transitionType and transitionTarget == currentTween then
+				table.insert( foundTransitions, currentTween )
+			elseif "tag" == transitionType and transitionTarget == currentTween.tag then
+				table.insert( foundTransitions, currentTween )
+			elseif "all" == transitionType and nil == transitionTarget then
+				table.insert( foundTransitions, currentTween )
+			elseif "displayobject" == transitionType and transitionTarget == currentTween._target then
+				table.insert( foundTransitions, currentTween )
+			end
+		end
+	end
+	
+	return foundTransitions
+	
 end
 
 -----------------------------------------------------------------------------------------
@@ -362,7 +359,7 @@ lib.pause = function( whatToPause )
 	
 	if "all" ~= targetType then iterationTarget = whatToPause end
 	-- iterate the table
-	local pauseTable = lib._findInTable( libEnterFrameTable, targetType, iterationTarget )
+	local pauseTable = lib._find( targetType, iterationTarget )
 	if #pauseTable > 0 then
 		for i = 1, #pauseTable do
 			local currentTween = pauseTable[ i ]
@@ -403,7 +400,7 @@ lib.resume = function( whatToResume )
 	if "all" ~= targetType then iterationTarget = whatToResume end
 	-- iterate the table
 	
-	local resumeTable = lib._findInTable( libEnterFrameTable, targetType, iterationTarget )
+	local resumeTable = lib._find( targetType, iterationTarget )
 	if #resumeTable > 0 then
 		for i = 1, #resumeTable do
 			local currentTween = resumeTable[ i ]
@@ -461,7 +458,7 @@ lib.cancel = function( whatToCancel )
 	
 	if "all" ~= targetType then iterationTarget = whatToCancel end
 	-- iterate the table
-	local cancelTable = lib._findInTable( libEnterFrameTable, targetType, iterationTarget )
+	local cancelTable = lib._find( targetType, iterationTarget )
 	
 	if #cancelTable > 0 then
 		for i = 1, #cancelTable do
