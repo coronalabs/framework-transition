@@ -605,7 +605,9 @@ function lib:enterFrame ( event )
 		end
 	end
 	lib._transitionTable = currentActiveTweens
-	
+	-- also restore the _enterFrameTweens variable here
+	lib._enterFrameTweens = currentActiveTweens
+
 	-- TODO: Should also unregister when there are only paused transitions
 	if #currentActiveTweens == 0 then
 		Runtime:removeEventListener( "enterFrame", lib )
