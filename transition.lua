@@ -491,7 +491,6 @@ function lib:enterFrame ( event )
 		-- check for any cancel lib variables
 		if cancelType then
 			if cancelType == "all" then
-				print("cancelling all")
 				tween._cancelled = true
 			elseif cancelType == "tag" then
 				if tween.tag == cancelTarget then
