@@ -38,6 +38,10 @@ lib._prevSuspendTime = 0
 -- control variable for the runtime listener
 lib._hasEventListener = false
 
+-- control variables for cancelling transitions
+lib._shouldCancelType = nil
+lib._shouldCancelTarget = nil
+
 -- reserved properties that cannot be transitioned
 lib._reservedProperties =
 {
@@ -135,6 +139,9 @@ lib._addTween = function( tween )
 		lib._hasEventListener = true
 		Runtime:addEventListener( "enterFrame", lib )
 	end
+	
+	-- Set a flag so we can mark the tween
+	tween._instantiatedByTransLib = true
 
 	table.insert( activeTweens, tween )
 end
@@ -436,41 +443,24 @@ end
 -- cancels the transitionObject transition
 -----------------------------------------------------------------------------------------
 lib.cancel = function( whatToCancel )
-
-	-- we use the targetType variable to establish how we iterate at the end of this method
-	local targetType = nil
-	local iterationTarget = nil
-	local libEnterFrameTable = lib._gatherTransitions()
-	
 	-- transition object or display object
 	if "table" == type( whatToCancel ) then
-		-- if the .transition field exists, then we have a transition object
-		if table.indexOf( libEnterFrameTable, whatToCancel ) then
-			targetType = "transition"
-		-- otherwise, we have a display object
+		if whatToCancel._instantiatedByTransLib then
+			-- set the tween's _cancelled property
+			whatToCancel._cancelled = true
 		else
-			targetType = "displayobject"
+			lib._shouldCancelType = "displayobject"
+			lib._shouldCancelTarget = whatToCancel
 		end
 	-- sequence name or tag
 	elseif "string" == type( whatToCancel ) then
-		targetType = "tag"
-	-- pause all
+			lib._shouldCancelType = "tag"
+			lib._shouldCancelTarget = whatToCancel
+	-- cancel all
 	elseif nil == whatToCancel then
-		targetType = "all"
+		lib._shouldCancelType = "all"
+		lib._shouldCancelTarget = nil
 	end
-	
-	if "all" ~= targetType then iterationTarget = whatToCancel end
-	-- iterate the table
-	local cancelTable = lib._findInTable( libEnterFrameTable, targetType, iterationTarget )
-	
-	if #cancelTable > 0 then
-		for i = 1, #cancelTable do
-			local currentTween = cancelTable[ i ]
-			currentTween._cancelled = true
-			currentTween._transitionHasCompleted = true
-		end
-	end
-
 end
 
 -- function lib:enterFrame(), and then Runtime:addEventListener( "enterFrame", lib )
@@ -485,16 +475,34 @@ function lib:enterFrame ( event )
 	lib._enterFrameTweens = lib._transitionTable
 	lib._transitionTable = {}
 	
+	-- create a local copy of the cancel control variables
+	local cancelType = lib._shouldCancelType
+	local cancelTarget = lib._shouldCancelTarget
+	
 	-- get the current event time
 	local currentTime = event.time
 	
 	-- create a local completed transitions table which we will empty at the end of the function's execution
 	local completedTransitions = {}
 	
-	-- create a local 
-	
 	-- iterate the transition table
 	for i,tween in ipairs( currentActiveTweens ) do 
+		
+		-- check for any cancel lib variables
+		if cancelType then
+			if cancelType == "all" then
+				print("cancelling all")
+				tween._cancelled = true
+			elseif cancelType == "tag" then
+				if tween.tag == cancelTarget then
+					tween._cancelled = true
+				end
+			elseif cancelType == "displayobject" then
+				if tween._target == cancelTarget then
+					tween._cancelled = true
+				end
+			end
+		end
 		
 		-- if the transition object is paused
 		if tween._paused then
