@@ -484,7 +484,7 @@ function lib:enterFrame ( event )
 	
 	-- create a local completed transitions table which we will empty at the end of the function's execution
 	local completedTransitions = {}
-	
+
 	-- iterate the transition table
 	for i,tween in ipairs( currentActiveTweens ) do 
 		
@@ -519,8 +519,9 @@ function lib:enterFrame ( event )
 					Runtime.callListener( listener, "onPause", target )
 				end
 			end
+		end
 						
-		elseif tween._cancelled then
+		if tween._cancelled then
 			table.insert( completedTransitions, i )
 			
 			-- dispatch the onCancel control event
@@ -529,7 +530,9 @@ function lib:enterFrame ( event )
 				local target = tween._target
 				Runtime.callListener( listener, "onCancel", target )
 			end
-		else
+		end
+		
+		if not tween._paused and not tween._cancelled then
 			local delay = tween._delay
 			if delay and ( currentTime >= (tween._timeStart + delay) ) then
 				tween._delay = nil
