@@ -273,7 +273,7 @@ lib.to = function( targetObject, transitionParams )
 		tween._onResume = Runtime.verifyListener( transitionParams.onResume, "onResume" )
 		tween._onCancel = Runtime.verifyListener( transitionParams.onCancel, "onCancel" )
 		tween._onRepeat = Runtime.verifyListener( transitionParams.onRepeat, "onRepeat" )
-		if transitionParams.generatedBy then
+		if transitionParams.generatedBy and transitionParams.generatedBy == "composer" then
 			tween._generatedByComposer = true
 		end
 		
