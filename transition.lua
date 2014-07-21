@@ -625,13 +625,12 @@ function lib:enterFrame ( event )
 	-- also restore the _enterFrameTweens variable here
 	lib._enterFrameTweens = currentActiveTweens
 
+	-- reset the cancel variables
+	lib._shouldCancelType = nil
+	lib._shouldCancelTarget = nil
+
 	-- TODO: Should also unregister when there are only paused transitions
-	if #currentActiveTweens == 0 then
-	
-		-- reset the cancel variables
-		lib._shouldCancelType = nil
-		lib._shouldCancelTarget = nil
-	
+	if #currentActiveTweens == 0 then	
 		Runtime:removeEventListener( "enterFrame", lib )
 		lib._hasEventListener = false
 	end
