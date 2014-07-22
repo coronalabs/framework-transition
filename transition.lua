@@ -464,6 +464,13 @@ lib.cancel = function( whatToCancel )
 		lib._shouldCancelType = "all"
 		lib._shouldCancelTarget = nil
 	end
+	
+	-- if no transitions, then don't cancel anything
+	if 0 == #lib._transitionTable then
+		lib._shouldCancelType = nil
+		lib._shouldCancelTarget = nil		
+	end
+	
 end
 
 -- function lib:enterFrame(), and then Runtime:addEventListener( "enterFrame", lib )
