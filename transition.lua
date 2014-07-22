@@ -466,6 +466,8 @@ lib.cancel = function( whatToCancel )
 	end
 	
 	-- if no transitions, then don't cancel anything
+	-- this is important because if one calls transition.cancel("tagname") followed by transition.to( obj, { tag = "tagname" } )
+	-- the newly created transition would be cancelled automatically.
 	if 0 == #lib._transitionTable then
 		lib._shouldCancelType = nil
 		lib._shouldCancelTarget = nil		
