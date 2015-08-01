@@ -354,6 +354,7 @@ lib.pause = function( whatToPause )
 		-- if the .transition field exists, then we have a transition object
 		if table.indexOf( libEnterFrameTable, whatToPause ) then
 			targetType = "transition"
+			whatToPause._paused = true
 		-- otherwise, we have a display object
 		else
 			targetType = "displayobject"
