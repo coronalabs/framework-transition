@@ -169,68 +169,6 @@ local function _handleSuspendResume( event )
 end
 
 -----------------------------------------------------------------------------------------
--- _gatherTransitions()
--- gathers the contents of the cached _enterFrameTweens transition table
--- adds to it any transitions that might be in the active transition table (lib._transitionTable)
------------------------------------------------------------------------------------------
-lib._gatherTransitions = function()
-
-	local libEnterFrameTable
-	-- if we already ran enterFrame for at least one time
-	if #lib._enterFrameTweens > 0 then
-		libEnterFrameTable = lib._enterFrameTweens
-	-- otherwise, we are still before enterFrame
-	else
-		libEnterFrameTable = lib._transitionTable
-	end
-	
-	return libEnterFrameTable
-end
-
------------------------------------------------------------------------------------------
--- _findInTable()
--- gathers the contents of the cached _enterFrameTweens transition table
--- adds to it any transitions that might be in the active transition table (lib._transitionTable)
------------------------------------------------------------------------------------------
-lib._findInTable = function( srcTable, transitionType, transitionTarget )
-    
-    local foundTransitions = {}
-   
-    -- if we have transitions in the final table, process them
-    if #srcTable > 0 then
-        for i = 1, #srcTable do
-            local currentTween = srcTable[ i ]
-            if "transition" == transitionType and transitionTarget == currentTween then
-                table.insert( foundTransitions, currentTween )
-            elseif "tag" == transitionType and transitionTarget == currentTween.tag then
-                table.insert( foundTransitions, currentTween )
-            elseif "all" == transitionType and nil == transitionTarget then
-                table.insert( foundTransitions, currentTween )
-            elseif "displayobject" == transitionType and transitionTarget == currentTween._target then
-                table.insert( foundTransitions, currentTween )
-            end
-        end
-    end
-    
-    return foundTransitions
-    
-end
-
------------------------------------------------------------------------------------------
--- find( type, target )
--- iterates the lib._enterFrameTweens variable and returns a table with transitions
--- that are of the type transitionType ( "transition", "tag", "all" or "displayobject" )
--- and have the target transitionTarget( transition object for transition, string for tag, 
--- nil for all and object for displayobject )
------------------------------------------------------------------------------------------
-lib._find = function( transitionType, transitionTarget )
-    
-    local libEnterFrameTable = lib._gatherTransitions()
-
-    return lib._findInTable( libEnterFrameTable, transitionType, transitionTarget )    
-end
-
------------------------------------------------------------------------------------------
 -- to( targetObject, transitionParams )
 -- transitions an object to the specified transitionParams
 ----------------------------------------------------------------------------------------- 
@@ -347,14 +285,12 @@ lib.pause = function( whatToPause )
 	-- we use the targetType variable to establish how we iterate at the end of this method
 	local targetType = nil
 	local iterationTarget = nil
-	local libEnterFrameTable = lib._gatherTransitions()
 	
 	-- transition object or display object
 	if "table" == type( whatToPause ) then
-		-- if the .transition field exists, then we have a transition object
-		if table.indexOf( libEnterFrameTable, whatToPause ) then
+		-- if the ._instantiatedByTransLib field exists, then we have a transition object
+		if whatToPause._instantiatedByTransLib then
 			targetType = "transition"
-			whatToPause._paused = true
 		-- otherwise, we have a display object
 		else
 			targetType = "displayobject"
@@ -390,6 +326,10 @@ lib.pause = function( whatToPause )
 				if tween._target == iterationTarget then
 					tween._paused = true
 				end
+			elseif targetType == "transition" then
+				if tween == iterationTarget then
+					tween._paused = true
+				end
 			end
 		end
 	end
@@ -405,12 +345,11 @@ lib.resume = function( whatToResume )
 	-- we use the targetType variable to establish how we iterate at the end of this method
 	local targetType = nil
 	local iterationTarget = nil
-	local libEnterFrameTable = lib._gatherTransitions()
 	
 	-- transition object or display object
 	if "table" == type( whatToResume ) then
-		-- if the .transition field exists, then we have a transition object
-		if table.indexOf( libEnterFrameTable, whatToResume ) then
+		-- if the ._instantiatedByTransLib field exists, then we have a transition object
+		if whatToResume._instantiatedByTransLib then
 			targetType = "transition"
 		-- otherwise, we have a display object
 		else
@@ -438,36 +377,19 @@ lib.resume = function( whatToResume )
 		-- only cancel if the tween was not generated by the composer library
 		local shouldResumeTween = false
 		if targetType and not tween._generatedByComposer then
-			if targetType == "transition" and not tween._transitionHasCompleted and tween._lastPausedTime then
-				shouldResumeTween = true
-			elseif targetType == "string" then
+			if targetType == "all" then
+				tween._resume = true
+			elseif targetType == "tag" then
 				if tween.tag == iterationTarget then
-					shouldResumeTween = true
+					tween._resume = true
 				end
 			elseif targetType == "displayobject" then
 				if tween._target == iterationTarget then
-					shouldResumeTween = true
+					tween._resume = true
 				end
-			end
-		end
-		
-		if shouldResumeTween then
-			if not tween._transitionHasCompleted and tween._lastPausedTime then
-				-- we calculate the time interval the transition was paused for
-				local transitionPausedInterval = system.getTimer() - tween._lastPausedTime
-
-				-- we adjust the transition object's begin transition variable with the calculated time interval
-				tween._timeStart = tween._timeStart + transitionPausedInterval
-
-				-- nil out the lastPausedTime variable of the transition object
-				tween._lastPausedTime = nil
-				tween._paused = false
-
-				-- dispatch the onResume method on the object
-				local listener = tween._onResume
-				if listener then
-					local target = tween._target
-					Runtime.callListener( listener, "onResume", target )
+			elseif targetType == "transition" then
+				if tween == whatToResume then
+					tween._resume = true
 				end
 			end
 		end
@@ -569,6 +491,28 @@ function lib:enterFrame ( event )
 					local target = tween._target
 					Runtime.callListener( listener, "onPause", target )
 				end
+			end
+		end
+		
+		if tween._resume then
+			if not tween._transitionHasCompleted and tween._lastPausedTime then
+				-- we calculate the time interval the transition was paused for
+				local transitionPausedInterval = system.getTimer() - tween._lastPausedTime
+
+				-- we adjust the transition object's begin transition variable with the calculated time interval
+				tween._timeStart = tween._timeStart + transitionPausedInterval
+
+				-- nil out the lastPausedTime variable of the transition object
+				tween._lastPausedTime = nil
+				tween._paused = false
+
+				-- dispatch the onResume method on the object
+				local listener = tween._onResume
+				if listener then
+					local target = tween._target
+					Runtime.callListener( listener, "onResume", target )
+				end
+				tween._resume = nil
 			end
 		end
 						
