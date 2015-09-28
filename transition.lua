@@ -131,9 +131,9 @@ lib._addTween = function( tween )
 	local activeTweens = lib._transitionTable
 	
 	-- Check for any tweens that are already moved to enterframe from lib._transitionTable
-    if #activeTweens == 0 and #lib._enterFrameTweens > 0 then
-        activeTweens = lib._enterFrameTweens
-    end
+	if #activeTweens == 0 and #lib._enterFrameTweens > 0 then
+		activeTweens = lib._enterFrameTweens
+	end
 	
 	-- Once we have at least one tween, register for frame events
 	if #activeTweens == 0 and not lib._hasEventListener then
