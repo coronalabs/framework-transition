@@ -345,9 +345,11 @@ lib.pause = function( whatToPause )
 		
 		-- dispatch the onPause control event
 		local listener = tween._onPause
-		if listener and tween._paused and not tween._cancelled then
+		if listener and tween._paused and not tween._cancelled and not tween._pauseTriggered then
 			local target = tween._target
 			Runtime.callListener( listener, "onPause", target )
+			tween._pauseTriggered = true
+			tween._resumeTriggered = false
 		end
 		
 	end
@@ -419,9 +421,11 @@ lib.resume = function( whatToResume )
 		
 		-- dispatch the onResume method on the object
 		local listener = tween._onResume
-		if listener and tween._resume and not tween._cancelled then
+		if listener and tween._resume and not tween._cancelled and not tween._resumeTriggered then
 			local target = tween._target
 			Runtime.callListener( listener, "onResume", target )
+			tween._pauseTriggered = false
+			tween._resumeTriggered = true
 		end
 	end
 
@@ -463,6 +467,8 @@ lib.cancel = function( whatToCancel )
 	if #transitionTable == 0 then
 		transitionTable = lib._enterFrameTweens
 	end
+	
+	local completedTransitions = {}
 	
 	for i,tween in ipairs( transitionTable ) do 
 		-- check for any cancel lib variables
