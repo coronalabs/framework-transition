@@ -342,6 +342,14 @@ lib.pause = function( whatToPause )
 				end
 			end
 		end
+		
+		-- dispatch the onPause control event
+		local listener = tween._onPause
+		if listener and tween._paused then
+			local target = tween._target
+			Runtime.callListener( listener, "onPause", target )
+		end
+		
 	end
 	
 end
@@ -408,6 +416,13 @@ lib.resume = function( whatToResume )
 				end
 			end
 		end
+		
+		-- dispatch the onResume method on the object
+		local listener = tween._onResume
+		if listener and tween._resume then
+			local target = tween._target
+			Runtime.callListener( listener, "onResume", target )
+		end
 	end
 
 end
@@ -465,6 +480,13 @@ lib.cancel = function( whatToCancel )
 				end
 			end
 		end
+		
+		-- dispatch the onCancel control event
+		local listener = tween._onCancel
+		if listener and tween._cancelled then
+			local target = tween._target
+			Runtime.callListener( listener, "onCancel", target )
+		end
 	end
 	
 end
@@ -498,13 +520,6 @@ function lib:enterFrame ( event )
 			if nil == tween._lastPausedTime then
 				-- set the pausedTime to the current time
 				tween._lastPausedTime = system.getTimer()
-	
-				-- dispatch the onPause control event
-				local listener = tween._onPause
-				if listener then
-					local target = tween._target
-					Runtime.callListener( listener, "onPause", target )
-				end
 			end
 		end
 
@@ -519,26 +534,12 @@ function lib:enterFrame ( event )
 				-- nil out the lastPausedTime variable of the transition object
 				tween._lastPausedTime = nil
 				tween._paused = nil
-
-				-- dispatch the onResume method on the object
-				local listener = tween._onResume
-				if listener then
-					local target = tween._target
-					Runtime.callListener( listener, "onResume", target )
-				end
 				tween._resume = nil
 			end
 		end
 						
 		if tween._cancelled then
 			table.insert( completedTransitions, i )
-			
-			-- dispatch the onCancel control event
-			local listener = tween._onCancel
-			if listener then
-				local target = tween._target
-				Runtime.callListener( listener, "onCancel", target )
-			end
 		end
 		
 		if not tween._paused and not tween._cancelled then
