@@ -345,7 +345,7 @@ lib.pause = function( whatToPause )
 		
 		-- dispatch the onPause control event
 		local listener = tween._onPause
-		if listener and tween._paused then
+		if listener and tween._paused and not tween._cancelled then
 			local target = tween._target
 			Runtime.callListener( listener, "onPause", target )
 		end
@@ -419,7 +419,7 @@ lib.resume = function( whatToResume )
 		
 		-- dispatch the onResume method on the object
 		local listener = tween._onResume
-		if listener and tween._resume then
+		if listener and tween._resume and not tween._cancelled then
 			local target = tween._target
 			Runtime.callListener( listener, "onResume", target )
 		end
