@@ -613,11 +613,11 @@ function lib:enterFrame ( event )
 
 				end
 			end
-										
+			
 		end
 
 	end
-					   
+	
 	-- Remove the transitions that are done
 	for i=#completedTransitions,1,-1 do
 		table.remove(currentActiveTweens, completedTransitions[i])
