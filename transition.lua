@@ -487,9 +487,10 @@ lib.cancel = function( whatToCancel )
 		
 		-- dispatch the onCancel control event
 		local listener = tween._onCancel
-		if listener and tween._cancelled then
+		if listener and tween._cancelled and not tween._cancelTriggered then
 			local target = tween._target
 			Runtime.callListener( listener, "onCancel", target )
+			tween._cancelTriggered = true
 		end
 	end
 	
