@@ -347,9 +347,9 @@ lib.pause = function( whatToPause )
 		local listener = tween._onPause
 		if listener and tween._paused and not tween._cancelled and not tween._pauseTriggered then
 			local target = tween._target
-			Runtime.callListener( listener, "onPause", target )
 			tween._pauseTriggered = true
 			tween._resumeTriggered = false
+			Runtime.callListener( listener, "onPause", target )
 		end
 		
 	end
@@ -423,9 +423,9 @@ lib.resume = function( whatToResume )
 		local listener = tween._onResume
 		if listener and tween._resume and not tween._cancelled and not tween._resumeTriggered then
 			local target = tween._target
-			Runtime.callListener( listener, "onResume", target )
 			tween._pauseTriggered = false
 			tween._resumeTriggered = true
+			Runtime.callListener( listener, "onResume", target )
 		end
 	end
 
@@ -489,8 +489,8 @@ lib.cancel = function( whatToCancel )
 		local listener = tween._onCancel
 		if listener and tween._cancelled and not tween._cancelTriggered then
 			local target = tween._target
-			Runtime.callListener( listener, "onCancel", target )
 			tween._cancelTriggered = true
+			Runtime.callListener( listener, "onCancel", target )
 		end
 	end
 	
