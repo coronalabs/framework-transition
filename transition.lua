@@ -254,27 +254,31 @@ lib.from = function( targetObject, transitionParams )
 	end
 
 	local newParams = {}
-	
-	local isDelta = transitionParams.delta
-	
-	-- we copy the transition params from the target object and set them as final transition params
-	for k, v in pairs( transitionParams ) do
-		if targetObject[ k ] then
 
-			local startPos, endPos
-			if isDelta then
-				endPos = - v
-				startPos = v + targetObject[ k ]
+	if targetObject and transitionParams then
+
+		local isDelta = transitionParams.delta
+		
+		-- we copy the transition params from the target object and set them as final transition params
+		for k, v in pairs( transitionParams ) do
+			if targetObject[ k ] then
+
+				local startPos, endPos
+				if isDelta then
+					endPos = - v
+					startPos = v + targetObject[ k ]
+				else
+					endPos = targetObject[ k ]
+					startPos = v
+				end
+
+				newParams[ k ] = endPos
+				targetObject[ k ] = startPos
 			else
-				endPos = targetObject[ k ]
-				startPos = v
+				newParams[ k ] = v
 			end
-
-			newParams[ k ] = endPos
-			targetObject[ k ] = startPos
-		else
-			newParams[ k ] = v
 		end
+
 	end
 				
 	-- create the transition and return the object
@@ -675,65 +679,69 @@ lib.newSequence = function( targetObject, params )
 			error( DEBUG_STRING .. " you have to pass a table of transitions in the params table to a transition.createSequence call." )
 		end
 	end
-	
-	-- create a sequence with the name params.name
-	lib._sequenceTable[params.name] = {}
-	
-	-- assign the transitions to it
-	lib._sequenceTable[params.name].transitions = params.transitions
-	
-	-- assign the target object to it
-	lib._sequenceTable[params.name].object = targetObject
-	
-	-- localize it
-	local currentSequence = lib._sequenceTable[params.name]
-	
-	-- create a temp table for the delays
-	local tranDelays = {}
-		
-	for i = 1, #currentSequence.transitions do
-	
-		local delayValue = 0
-		
-		if currentSequence.transitions[ i ].delay then
-			delayValue  = delayValue + currentSequence.transitions[ i ].delay
-		end
-		
-		-- if we are at least at the second transition in the table
-		if i > 1 then
-		
-			for j = i - 1, 1, -1 do
-				
-				local addedDelay = 0
-				local prevDelay = 0
-				
-				if currentSequence.transitions[ j ].delay then
-					addedDelay = currentSequence.transitions[ j ].delay
-				end
-				
-				if currentSequence.transitions[ j ].mode ~= "withPrevious" then
-					prevDelay = prevDelay + currentSequence.transitions[ j ].time
-				end
-				
-				prevDelay = prevDelay + addedDelay
 
-				delayValue = delayValue + prevDelay
+	if targetObject and params and params.transitions and params.name then
 
-				
+		-- create a sequence with the name params.name
+		lib._sequenceTable[params.name] = {}
+		
+		-- assign the transitions to it
+		lib._sequenceTable[params.name].transitions = params.transitions
+		
+		-- assign the target object to it
+		lib._sequenceTable[params.name].object = targetObject
+		
+		-- localize it
+		local currentSequence = lib._sequenceTable[params.name]
+		
+		-- create a temp table for the delays
+		local tranDelays = {}
+			
+		for i = 1, #currentSequence.transitions do
+		
+			local delayValue = 0
+			
+			if currentSequence.transitions[ i ].delay then
+				delayValue  = delayValue + currentSequence.transitions[ i ].delay
 			end
 			
-			if currentSequence.transitions[ i ].mode == "withPrevious" then
-				delayValue = delayValue - currentSequence.transitions[ i - 1 ].time
-				if currentSequence.transitions[ i - 1 ].delay then
-					delayValue = delayValue - currentSequence.transitions[ i - 1 ].delay
+			-- if we are at least at the second transition in the table
+			if i > 1 then
+			
+				for j = i - 1, 1, -1 do
+					
+					local addedDelay = 0
+					local prevDelay = 0
+					
+					if currentSequence.transitions[ j ].delay then
+						addedDelay = currentSequence.transitions[ j ].delay
+					end
+					
+					if currentSequence.transitions[ j ].mode ~= "withPrevious" then
+						prevDelay = prevDelay + currentSequence.transitions[ j ].time
+					end
+					
+					prevDelay = prevDelay + addedDelay
+
+					delayValue = delayValue + prevDelay
+
+					
 				end
+				
+				if currentSequence.transitions[ i ].mode == "withPrevious" then
+					delayValue = delayValue - currentSequence.transitions[ i - 1 ].time
+					if currentSequence.transitions[ i - 1 ].delay then
+						delayValue = delayValue - currentSequence.transitions[ i - 1 ].delay
+					end
+				end
+				
+				--currentSequence.transitions[ i ].delay = delayValue
+				tranDelays[ i ] = delayValue
+			
 			end
 			
-			--currentSequence.transitions[ i ].delay = delayValue
-			tranDelays[ i ] = delayValue
-		
 		end
-		
+
 	end
 	
 	-- assign the values from the temp table
@@ -831,41 +839,46 @@ lib.moveTo = function( targetObject, params )
 	end
 	
 	local paramsTable = params or {}
+	local addedTransition = nil
+
+	if targetObject then
 	
-	local actionTime = paramsTable.time or 500
-	local actionDelay = paramsTable.delay or 0
-	local actionEasing = paramsTable.transition or easing.linear
-	local actionOnComplete = paramsTable.onComplete or nil
-	local actionOnPause = paramsTable.onPause or nil
-	local actionOnResume = paramsTable.onResume or nil
-	local actionOnCancel = paramsTable.onCancel or nil
-	local actionOnStart = paramsTable.onStart or nil
-	local actionOnRepeat = paramsTable.onRepeat or nil
-	local actionXScale = paramsTable.xScale or targetObject.xScale
-	local actionYScale = paramsTable.yScale or targetObject.yScale
-	local actionAlpha = paramsTable.alpha or targetObject.alpha
-	local actionTag = paramsTable.tag or nil
-	local actionX = paramsTable.x or targetObject.x
-	local actionY = paramsTable.y or targetObject.y
-	
-	local addedTransition = lib.to( targetObject, 
-	{
-		delay = actionDelay,
-		time = actionTime,
-		transition = actionEasing,
-		onComplete = actionOnComplete,
-		onPause = actionOnPause,
-		onResume = actionOnResume,
-		onCancel = actionOnCancel,
-		onStart = actionOnStart,
-		onRepeat = actionOnRepeat,
-		alpha = actionAlpha,
-		xScale = actionXScale,
-		yScale = actionYScale,
-		x = actionX,
-		y = actionY,
-		tag = actionTag
-	} )
+		local actionTime = paramsTable.time or 500
+		local actionDelay = paramsTable.delay or 0
+		local actionEasing = paramsTable.transition or easing.linear
+		local actionOnComplete = paramsTable.onComplete or nil
+		local actionOnPause = paramsTable.onPause or nil
+		local actionOnResume = paramsTable.onResume or nil
+		local actionOnCancel = paramsTable.onCancel or nil
+		local actionOnStart = paramsTable.onStart or nil
+		local actionOnRepeat = paramsTable.onRepeat or nil
+		local actionXScale = paramsTable.xScale or targetObject.xScale
+		local actionYScale = paramsTable.yScale or targetObject.yScale
+		local actionAlpha = paramsTable.alpha or targetObject.alpha
+		local actionTag = paramsTable.tag or nil
+		local actionX = paramsTable.x or targetObject.x
+		local actionY = paramsTable.y or targetObject.y
+		
+		addedTransition = lib.to( targetObject,
+		{
+			delay = actionDelay,
+			time = actionTime,
+			transition = actionEasing,
+			onComplete = actionOnComplete,
+			onPause = actionOnPause,
+			onResume = actionOnResume,
+			onCancel = actionOnCancel,
+			onStart = actionOnStart,
+			onRepeat = actionOnRepeat,
+			alpha = actionAlpha,
+			xScale = actionXScale,
+			yScale = actionYScale,
+			x = actionX,
+			y = actionY,
+			tag = actionTag
+		} )
+
+	end
 	
 	return addedTransition
 
@@ -883,41 +896,46 @@ lib.moveBy = function( targetObject, params )
 	end
 
 	local paramsTable = params or {}
+	local addedTransition = nil
+
+	if targetObject then
 	
-	local actionTime = paramsTable.time or 500
-	local actionDelay = paramsTable.delay or 0
-	local actionEasing = paramsTable.transition or easing.linear
-	local actionOnComplete = paramsTable.onComplete or nil
-	local actionOnPause = paramsTable.onPause or nil
-	local actionOnResume = paramsTable.onResume or nil
-	local actionOnCancel = paramsTable.onCancel or nil
-	local actionOnStart = paramsTable.onStart or nil
-	local actionOnRepeat = paramsTable.onRepeat or nil
-	local actionXScale = paramsTable.xScale or targetObject.xScale
-	local actionYScale = paramsTable.yScale or targetObject.yScale
-	local actionAlpha = paramsTable.alpha or targetObject.alpha
-	local actionTag = paramsTable.tag or nil
-	local actionX = paramsTable.x or 0
-	local actionY = paramsTable.y or 0
-	
-	local addedTransition = lib.to( targetObject, 
-	{
-		delay = actionDelay,
-		time = actionTime,
-		transition = actionEasing,
-		onComplete = actionOnComplete,
-		onPause = actionOnPause,
-		onResume = actionOnResume,
-		onCancel = actionOnCancel,
-		onStart = actionOnStart,
-		onRepeat = actionOnRepeat,
-		alpha = actionAlpha,
-		xScale = actionXScale,
-		yScale = actionYScale,
-		x = targetObject.x + actionX,
-		y = targetObject.y + actionY,
-		tag = actionTag
-	} )
+		local actionTime = paramsTable.time or 500
+		local actionDelay = paramsTable.delay or 0
+		local actionEasing = paramsTable.transition or easing.linear
+		local actionOnComplete = paramsTable.onComplete or nil
+		local actionOnPause = paramsTable.onPause or nil
+		local actionOnResume = paramsTable.onResume or nil
+		local actionOnCancel = paramsTable.onCancel or nil
+		local actionOnStart = paramsTable.onStart or nil
+		local actionOnRepeat = paramsTable.onRepeat or nil
+		local actionXScale = paramsTable.xScale or targetObject.xScale
+		local actionYScale = paramsTable.yScale or targetObject.yScale
+		local actionAlpha = paramsTable.alpha or targetObject.alpha
+		local actionTag = paramsTable.tag or nil
+		local actionX = paramsTable.x or 0
+		local actionY = paramsTable.y or 0
+		
+		addedTransition = lib.to( targetObject,
+		{
+			delay = actionDelay,
+			time = actionTime,
+			transition = actionEasing,
+			onComplete = actionOnComplete,
+			onPause = actionOnPause,
+			onResume = actionOnResume,
+			onCancel = actionOnCancel,
+			onStart = actionOnStart,
+			onRepeat = actionOnRepeat,
+			alpha = actionAlpha,
+			xScale = actionXScale,
+			yScale = actionYScale,
+			x = targetObject.x + actionX,
+			y = targetObject.y + actionY,
+			tag = actionTag
+		} )
+
+	end
 	
 	return addedTransition
 
@@ -935,41 +953,46 @@ lib.scaleTo = function( targetObject, params )
 	end
 	
 	local paramsTable = params or {}
+	local addedTransition = nil
+
+	if targetObject then
 	
-	local actionTime = paramsTable.time or 500
-	local actionDelay = paramsTable.delay or 0
-	local actionEasing = paramsTable.transition or easing.linear
-	local actionOnComplete = paramsTable.onComplete or nil
-	local actionOnPause = paramsTable.onPause or nil
-	local actionOnResume = paramsTable.onResume or nil
-	local actionOnCancel = paramsTable.onCancel or nil
-	local actionOnStart = paramsTable.onStart or nil
-	local actionOnRepeat = paramsTable.onRepeat or nil
-	local actionXScale = paramsTable.xScale or targetObject.xScale
-	local actionYScale = paramsTable.yScale or targetObject.yScale
-	local actionAlpha = paramsTable.alpha or targetObject.alpha
-	local actionX = paramsTable.x or targetObject.x
-	local actionY = paramsTable.y or targetObject.y
-	local actionTag = paramsTable.tag or nil
-	
-	local addedTransition = lib.to( targetObject, 
-	{
-		delay = actionDelay,
-		time = actionTime,
-		transition = actionEasing,
-		onComplete = actionOnComplete,
-		onPause = actionOnPause,
-		onResume = actionOnResume,
-		onCancel = actionOnCancel,
-		onStart = actionOnStart,
-		onRepeat = actionOnRepeat,
-		alpha = actionAlpha,
-		xScale = actionXScale,
-		yScale = actionYScale,
-		x = actionX,
-		y = actionY,
-		tag = actionTag
-	} )
+		local actionTime = paramsTable.time or 500
+		local actionDelay = paramsTable.delay or 0
+		local actionEasing = paramsTable.transition or easing.linear
+		local actionOnComplete = paramsTable.onComplete or nil
+		local actionOnPause = paramsTable.onPause or nil
+		local actionOnResume = paramsTable.onResume or nil
+		local actionOnCancel = paramsTable.onCancel or nil
+		local actionOnStart = paramsTable.onStart or nil
+		local actionOnRepeat = paramsTable.onRepeat or nil
+		local actionXScale = paramsTable.xScale or targetObject.xScale
+		local actionYScale = paramsTable.yScale or targetObject.yScale
+		local actionAlpha = paramsTable.alpha or targetObject.alpha
+		local actionX = paramsTable.x or targetObject.x
+		local actionY = paramsTable.y or targetObject.y
+		local actionTag = paramsTable.tag or nil
+		
+		addedTransition = lib.to( targetObject,
+		{
+			delay = actionDelay,
+			time = actionTime,
+			transition = actionEasing,
+			onComplete = actionOnComplete,
+			onPause = actionOnPause,
+			onResume = actionOnResume,
+			onCancel = actionOnCancel,
+			onStart = actionOnStart,
+			onRepeat = actionOnRepeat,
+			alpha = actionAlpha,
+			xScale = actionXScale,
+			yScale = actionYScale,
+			x = actionX,
+			y = actionY,
+			tag = actionTag
+		} )
+
+	end
 
 	return addedTransition
 
@@ -987,41 +1010,46 @@ lib.scaleBy = function( targetObject, params )
 	end
 	
 	local paramsTable = params or {}
+	local addedTransition = nil
+
+	if targetObject then
 	
-	local actionTime = paramsTable.time or 500
-	local actionDelay = paramsTable.delay or 0
-	local actionEasing = paramsTable.transition or easing.linear
-	local actionOnComplete = paramsTable.onComplete or nil
-	local actionOnPause = paramsTable.onPause or nil
-	local actionOnResume = paramsTable.onResume or nil
-	local actionOnCancel = paramsTable.onCancel or nil
-	local actionOnStart = paramsTable.onStart or nil
-	local actionOnRepeat = paramsTable.onRepeat or nil
-	local actionXScale = paramsTable.xScale or 0
-	local actionYScale = paramsTable.yScale or 0
-	local actionAlpha = paramsTable.alpha or targetObject.alpha
-	local actionX = paramsTable.x or targetObject.x
-	local actionY = paramsTable.y or targetObject.y
-	local actionTag = paramsTable.tag or nil
-	
-	local addedTransition = lib.to( targetObject, 
-	{
-		delay = actionDelay,
-		time = actionTime,
-		transition = actionEasing,
-		onComplete = actionOnComplete,
-		onPause = actionOnPause,
-		onResume = actionOnResume,
-		onCancel = actionOnCancel,
-		onStart = actionOnStart,
-		onRepeat = actionOnRepeat,
-		x = actionX,
-		y = actionY,
-		alpha = actionAlpha,
-		xScale = targetObject.xScale + actionXScale,
-		yScale = targetObject.yScale + actionYScale,
-		tag = actionTag
-	} )
+		local actionTime = paramsTable.time or 500
+		local actionDelay = paramsTable.delay or 0
+		local actionEasing = paramsTable.transition or easing.linear
+		local actionOnComplete = paramsTable.onComplete or nil
+		local actionOnPause = paramsTable.onPause or nil
+		local actionOnResume = paramsTable.onResume or nil
+		local actionOnCancel = paramsTable.onCancel or nil
+		local actionOnStart = paramsTable.onStart or nil
+		local actionOnRepeat = paramsTable.onRepeat or nil
+		local actionXScale = paramsTable.xScale or 0
+		local actionYScale = paramsTable.yScale or 0
+		local actionAlpha = paramsTable.alpha or targetObject.alpha
+		local actionX = paramsTable.x or targetObject.x
+		local actionY = paramsTable.y or targetObject.y
+		local actionTag = paramsTable.tag or nil
+		
+		addedTransition = lib.to( targetObject,
+		{
+			delay = actionDelay,
+			time = actionTime,
+			transition = actionEasing,
+			onComplete = actionOnComplete,
+			onPause = actionOnPause,
+			onResume = actionOnResume,
+			onCancel = actionOnCancel,
+			onStart = actionOnStart,
+			onRepeat = actionOnRepeat,
+			x = actionX,
+			y = actionY,
+			alpha = actionAlpha,
+			xScale = targetObject.xScale + actionXScale,
+			yScale = targetObject.yScale + actionYScale,
+			tag = actionTag
+		} )
+
+	end
 		
 	return addedTransition
 
@@ -1039,36 +1067,41 @@ lib.fadeIn = function( targetObject, params )
 	end
 	
 	local paramsTable = params or {}
-	
-	local actionTime = paramsTable.time or 500
-	local actionDelay = paramsTable.delay or 0
-	local actionEasing = paramsTable.transition or easing.linear
-	local actionOnComplete = paramsTable.onComplete or nil
-	local actionOnPause = paramsTable.onPause or nil
-	local actionOnResume = paramsTable.onResume or nil
-	local actionOnCancel = paramsTable.onCancel or nil
-	local actionOnStart = paramsTable.onStart or nil
-	local actionOnRepeat = paramsTable.onRepeat or nil
-	local actionX = paramsTable.x or targetObject.x
-	local actionY = paramsTable.y or targetObject.y
-	local actionTag = paramsTable.tag or nil
-	
-	local addedTransition = lib.to( targetObject, 
-	{
-		delay = actionDelay,
-		time = actionTime,
-		transition = actionEasing,
-		onComplete = actionOnComplete,
-		onPause = actionOnPause,
-		onResume = actionOnResume,
-		onCancel = actionOnCancel,
-		onStart = actionOnStart,
-		onRepeat = actionOnRepeat,
-		x = actionX,
-		y = actionY,
-		alpha = 1.0,
-		tag = actionTag
-	} )
+	local addedTransition = nil
+
+	if targetObject then
+
+		local actionTime = paramsTable.time or 500
+		local actionDelay = paramsTable.delay or 0
+		local actionEasing = paramsTable.transition or easing.linear
+		local actionOnComplete = paramsTable.onComplete or nil
+		local actionOnPause = paramsTable.onPause or nil
+		local actionOnResume = paramsTable.onResume or nil
+		local actionOnCancel = paramsTable.onCancel or nil
+		local actionOnStart = paramsTable.onStart or nil
+		local actionOnRepeat = paramsTable.onRepeat or nil
+		local actionX = paramsTable.x or targetObject.x
+		local actionY = paramsTable.y or targetObject.y
+		local actionTag = paramsTable.tag or nil
+		
+		addedTransition = lib.to( targetObject,
+		{
+			delay = actionDelay,
+			time = actionTime,
+			transition = actionEasing,
+			onComplete = actionOnComplete,
+			onPause = actionOnPause,
+			onResume = actionOnResume,
+			onCancel = actionOnCancel,
+			onStart = actionOnStart,
+			onRepeat = actionOnRepeat,
+			x = actionX,
+			y = actionY,
+			alpha = 1.0,
+			tag = actionTag
+		} )
+
+	end
 	
 	return addedTransition
 	
@@ -1086,36 +1119,41 @@ lib.fadeOut = function( targetObject, params )
 	end
 	
 	local paramsTable = params or {}
+	local addedTransition = nil
+
+	if targetObject then
 	
-	local actionTime = paramsTable.time or 500
-	local actionDelay = paramsTable.delay or 0
-	local actionEasing = paramsTable.transition or easing.linear
-	local actionOnComplete = paramsTable.onComplete or nil
-	local actionOnPause = paramsTable.onPause or nil
-	local actionOnResume = paramsTable.onResume or nil
-	local actionOnCancel = paramsTable.onCancel or nil
-	local actionOnStart = paramsTable.onStart or nil
-	local actionOnRepeat = paramsTable.onRepeat or nil
-	local actionX = paramsTable.x or targetObject.x
-	local actionY = paramsTable.y or targetObject.y
-	local actionTag = paramsTable.tag or nil
-	
-	local addedTransition = lib.to( targetObject, 
-	{
-		delay = actionDelay,
-		time = actionTime,
-		transition = actionEasing,
-		onComplete = actionOnComplete,
-		onPause = actionOnPause,
-		onResume = actionOnResume,
-		onCancel = actionOnCancel,
-		onStart = actionOnStart,
-		onRepeat = actionOnRepeat,
-		tag = actionTag,
-		x = actionX,
-		y = actionY,
-		alpha = 0.0
-	} )
+		local actionTime = paramsTable.time or 500
+		local actionDelay = paramsTable.delay or 0
+		local actionEasing = paramsTable.transition or easing.linear
+		local actionOnComplete = paramsTable.onComplete or nil
+		local actionOnPause = paramsTable.onPause or nil
+		local actionOnResume = paramsTable.onResume or nil
+		local actionOnCancel = paramsTable.onCancel or nil
+		local actionOnStart = paramsTable.onStart or nil
+		local actionOnRepeat = paramsTable.onRepeat or nil
+		local actionX = paramsTable.x or targetObject.x
+		local actionY = paramsTable.y or targetObject.y
+		local actionTag = paramsTable.tag or nil
+		
+		addedTransition = lib.to( targetObject,
+		{
+			delay = actionDelay,
+			time = actionTime,
+			transition = actionEasing,
+			onComplete = actionOnComplete,
+			onPause = actionOnPause,
+			onResume = actionOnResume,
+			onCancel = actionOnCancel,
+			onStart = actionOnStart,
+			onRepeat = actionOnRepeat,
+			tag = actionTag,
+			x = actionX,
+			y = actionY,
+			alpha = 0.0
+		} )
+
+	end
 	
 	return addedTransition
 	
