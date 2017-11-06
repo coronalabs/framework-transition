@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --
 -- transition.lua
--- 
+--
 -- Version: 2.0
 --
 -- Copyright (C) 2013 Corona Labs Inc. All Rights Reserved.
@@ -46,11 +46,11 @@ lib._reservedProperties =
 }
 
 -- keys that have a number value
-lib._numberKeys = 
+lib._numberKeys =
 {
-	x=true, y=true, xScale=true, yScale=true, rotation=true, width=true, height=true, 
-	alpha=true, 
-	xReference=true, yReference=true, 
+	x=true, y=true, xScale=true, yScale=true, rotation=true, width=true, height=true,
+	alpha=true,
+	xReference=true, yReference=true,
 	maskX=true, maskY=true, maskScaleX=true, maskScaleY=true, maskRotation=true,
 	delta=true,
 }
@@ -64,7 +64,7 @@ lib.debugEnabled = false
 -----------------------------------------------------------------------------------------
 -- _validateValue( k, v )
 -- validates input values. Ensures they are number format
------------------------------------------------------------------------------------------ 
+-----------------------------------------------------------------------------------------
 local function _validateValue( k, v )
 	if ( "number" == type( v ) and lib._numberKeys[k] ) then
 		local isNan = ( v ~= v )
@@ -80,7 +80,7 @@ end
 -----------------------------------------------------------------------------------------
 -- copyTable( src )
 -- copies the contents of a table to another table
------------------------------------------------------------------------------------------ 
+-----------------------------------------------------------------------------------------
 local function _copyTable( src )
 	local t = {}
 
@@ -93,7 +93,7 @@ end
 
 -----------------------------------------------------------------------------------------
 -- _initTween( tween, parameters )
--- assigns the start and end values of a tween, accounting for delta and valid values 
+-- assigns the start and end values of a tween, accounting for delta and valid values
 -----------------------------------------------------------------------------------------
 lib._initTween = function( tween, parameters )
 	local target = tween._target
@@ -129,18 +129,18 @@ end
 -----------------------------------------------------------------------------------------
 lib._addTween = function( tween )
 	local activeTweens = lib._transitionTable
-	
+
 	-- Check for any tweens that are already moved to enterframe from lib._transitionTable
 	if #activeTweens == 0 and #lib._enterFrameTweens > 0 then
 		activeTweens = lib._enterFrameTweens
 	end
-	
+
 	-- Once we have at least one tween, register for frame events
 	if #activeTweens == 0 and not lib._hasEventListener then
 		lib._hasEventListener = true
 		Runtime:addEventListener( "enterFrame", lib )
 	end
-	
+
 	-- Set a flag so we can mark the tween
 	tween._instantiatedByTransLib = true
 
@@ -150,19 +150,19 @@ end
 -----------------------------------------------------------------------------------------
 -- _handleSuspendResume( event )
 -- handles the suspending / resuming of transitions in case of suspend / resume events
------------------------------------------------------------------------------------------ 
+-----------------------------------------------------------------------------------------
 local function _handleSuspendResume( event )
 	-- if the application got suspended
 	if "applicationSuspend" == event.type then
 		-- assign the prevSuspendTime variable to the current internal time
 		lib._prevSuspendTime = system.getTimer()
-		
+
 	-- if the application resumed
 	elseif "applicationResume" == event.type then
-	
+
 		-- calculate the difference between the suspension time and the current internal time
 		local nextSuspendedTime = system.getTimer() - lib._prevSuspendTime
-				
+
 		-- assign the difference to all the transitions that are in the table
 		for i = 1, #lib._transitionTable do
 			-- only do this for non-completed transitions
@@ -176,14 +176,14 @@ end
 -----------------------------------------------------------------------------------------
 -- to( targetObject, transitionParams )
 -- transitions an object to the specified transitionParams
------------------------------------------------------------------------------------------ 
+-----------------------------------------------------------------------------------------
 lib.to = function( targetObject, transitionParams )
 	if nil == targetObject then
 		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a display object to a transition.to call." )
 		end
 	end
-	
+
 	if nil == transitionParams then
 		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a params table to a transition.to call." )
@@ -215,7 +215,7 @@ lib.to = function( targetObject, transitionParams )
 		if transitionParams.generatedBy and transitionParams.generatedBy == "composer" then
 			tween._generatedByComposer = true
 		end
-		
+
 		local delay = transitionParams.delay
 		if type(delay) == "number" then
 			tween._delay = delay
@@ -233,20 +233,20 @@ lib.to = function( targetObject, transitionParams )
 	return tween
 
 
-	
+
 end
 
 -----------------------------------------------------------------------------------------
 -- from( targetObject, transitionParams )
 -- transitions an object from the specified transitionParams
------------------------------------------------------------------------------------------ 
+-----------------------------------------------------------------------------------------
 lib.from = function( targetObject, transitionParams )
 	if nil == targetObject then
 		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a display object to a transition.from call." )
 		end
 	end
-	
+
 	if nil == transitionParams then
 		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a params table to a transition.from call." )
@@ -258,7 +258,7 @@ lib.from = function( targetObject, transitionParams )
 	if targetObject and transitionParams then
 
 		local isDelta = transitionParams.delta
-		
+
 		-- we copy the transition params from the target object and set them as final transition params
 		for k, v in pairs( transitionParams ) do
 			if targetObject[ k ] then
@@ -280,21 +280,21 @@ lib.from = function( targetObject, transitionParams )
 		end
 
 	end
-				
+
 	-- create the transition and return the object
 	return lib.to( targetObject, newParams )
 end
-	
+
 -----------------------------------------------------------------------------------------
 -- pause( whatToPause )
 -- pauses the whatToPause transition object, sequence, tag or display object
 -----------------------------------------------------------------------------------------
 lib.pause = function( whatToPause )
-	
+
 	-- we use the targetType variable to establish how we iterate at the end of this method
 	local targetType = nil
 	local iterationTarget = nil
-	
+
 	-- transition object or display object
 	if "table" == type( whatToPause ) then
 		-- if the ._instantiatedByTransLib field exists, then we have a transition object
@@ -312,18 +312,18 @@ lib.pause = function( whatToPause )
 	elseif nil == whatToPause then
 		targetType = "all"
 	end
-	
+
 	if "all" ~= targetType then iterationTarget = whatToPause end
-	
+
 	local transitionTable = lib._transitionTable
-	
+
 	-- if enterframe was run already, if we have any running tweens they won't be in the lib._transitionTable variable, but in lib._enterFrameTweens
 	if #transitionTable == 0 then
 		transitionTable = lib._enterFrameTweens
 	end
-	
+
 	-- iterate the table
-	for i,tween in ipairs( transitionTable ) do 
+	for i,tween in ipairs( transitionTable ) do
 		-- only cancel if the tween was not generated by the composer library
 		if targetType and not tween._generatedByComposer then
 			if targetType == "all" then
@@ -346,7 +346,7 @@ lib.pause = function( whatToPause )
 				end
 			end
 		end
-		
+
 		-- dispatch the onPause control event
 		local listener = tween._onPause
 		if listener and tween._paused and not tween._cancelled and not tween._pauseTriggered then
@@ -355,9 +355,9 @@ lib.pause = function( whatToPause )
 			tween._resumeTriggered = false
 			Runtime.callListener( listener, "onPause", target )
 		end
-		
+
 	end
-	
+
 end
 
 -----------------------------------------------------------------------------------------
@@ -369,7 +369,7 @@ lib.resume = function( whatToResume )
 	-- we use the targetType variable to establish how we iterate at the end of this method
 	local targetType = nil
 	local iterationTarget = nil
-	
+
 	-- transition object or display object
 	if "table" == type( whatToResume ) then
 		-- if the ._instantiatedByTransLib field exists, then we have a transition object
@@ -387,18 +387,18 @@ lib.resume = function( whatToResume )
 	elseif nil == whatToResume then
 		targetType = "all"
 	end
-	
+
 	if "all" ~= targetType then iterationTarget = whatToResume end
 	-- iterate the table
-	
+
 	local transitionTable = lib._transitionTable
-	
+
 	-- if enterframe was run already, if we have any running tweens they won't be in the lib._transitionTable variable, but in lib._enterFrameTweens
 	if #transitionTable == 0 then
 		transitionTable = lib._enterFrameTweens
 	end
-			
-	for i,tween in ipairs( transitionTable ) do 
+
+	for i,tween in ipairs( transitionTable ) do
 		-- check for any resume lib variables
 		-- only resume if the tween was not generated by the composer library
 		if targetType and not tween._generatedByComposer then
@@ -422,7 +422,7 @@ lib.resume = function( whatToResume )
 				end
 			end
 		end
-		
+
 		-- dispatch the onResume method on the object
 		local listener = tween._onResume
 		if listener and tween._resume and not tween._cancelled and not tween._resumeTriggered then
@@ -471,8 +471,8 @@ lib.cancel = function( whatToCancel )
 	if #transitionTable == 0 then
 		transitionTable = lib._enterFrameTweens
 	end
-	
-	for i,tween in ipairs( transitionTable ) do 
+
+	for i,tween in ipairs( transitionTable ) do
 		-- check for any cancel lib variables
 		-- only cancel if the tween was not generated by the composer library
 		if cancelType and not tween._generatedByComposer then
@@ -488,7 +488,7 @@ lib.cancel = function( whatToCancel )
 				end
 			end
 		end
-		
+
 		-- dispatch the onCancel control event
 		local listener = tween._onCancel
 		if listener and tween._cancelled and not tween._cancelTriggered then
@@ -497,7 +497,7 @@ lib.cancel = function( whatToCancel )
 			Runtime.callListener( listener, "onCancel", target )
 		end
 	end
-	
+
 end
 
 -- function lib:enterFrame(), and then Runtime:addEventListener( "enterFrame", lib )
@@ -506,25 +506,25 @@ end
 -- the frame listener for the transitions
 -----------------------------------------------------------------------------------------
 function lib:enterFrame ( event )
-	
+
 	-- create a local copy of the transition table, to avoid a race condition
 	local currentActiveTweens = lib._transitionTable
 	lib._enterFrameTweens = lib._transitionTable
-		
+
 	lib._transitionTable = {}
-	
+
 	-- get the current event time
 	local currentTime = event.time
-	
+
 	-- create a local completed transitions table which we will empty at the end of the function's execution
 	local completedTransitions = {}
 
 	-- iterate the transition table
-	for i,tween in ipairs( currentActiveTweens ) do 
+	for i,tween in ipairs( currentActiveTweens ) do
 		-- if the transition object is paused
 		if tween._paused then
 			-- handle tweens marked as paused
-			
+
 			-- only set the pausedTime if that did not happen already
 			if nil == tween._lastPausedTime then
 				-- set the pausedTime to the current time
@@ -546,11 +546,11 @@ function lib:enterFrame ( event )
 				tween._resume = nil
 			end
 		end
-						
+
 		if tween._cancelled then
 			table.insert( completedTransitions, i )
 		end
-		
+
 		if not tween._paused and not tween._cancelled then
 			local delay = tween._delay
 			if delay and ( currentTime >= (tween._timeStart + delay) ) then
@@ -590,7 +590,7 @@ function lib:enterFrame ( event )
 							target[k] = v
 						end
 					end
-					
+
 					if tween.iterations == 1 then
 						-- the transition has completed
 						-- onComplete listener
@@ -614,15 +614,15 @@ function lib:enterFrame ( event )
 							Runtime.callListener( listener, "onRepeat", target )
 						end
 					end
-					
+
 
 				end
 			end
-			
+
 		end
 
 	end
-	
+
 	-- Remove the transitions that are done
 	for i=#completedTransitions,1,-1 do
 		table.remove(currentActiveTweens, completedTransitions[i])
@@ -641,7 +641,7 @@ function lib:enterFrame ( event )
 	lib._enterFrameTweens = currentActiveTweens
 
 	-- TODO: Should also unregister when there are only paused transitions
-	if #currentActiveTweens == 0 then	
+	if #currentActiveTweens == 0 then
 		Runtime:removeEventListener( "enterFrame", lib )
 		lib._hasEventListener = false
 	end
@@ -661,7 +661,7 @@ lib.newSequence = function( targetObject, params )
 			error( DEBUG_STRING .. " you have to pass a target object to a transition.createSequence call." )
 		end
 	end
-	
+
 	if params == nil then
 		if lib.debugEnabled then
 			error( DEBUG_STRING .. " you have to pass a params table to a transition.createSequence call." )
@@ -684,71 +684,71 @@ lib.newSequence = function( targetObject, params )
 
 		-- create a sequence with the name params.name
 		lib._sequenceTable[params.name] = {}
-		
+
 		-- assign the transitions to it
 		lib._sequenceTable[params.name].transitions = params.transitions
-		
+
 		-- assign the target object to it
 		lib._sequenceTable[params.name].object = targetObject
-		
+
 		-- localize it
 		local currentSequence = lib._sequenceTable[params.name]
-		
+
 		-- create a temp table for the delays
 		local tranDelays = {}
-			
+
 		for i = 1, #currentSequence.transitions do
-		
+
 			local delayValue = 0
-			
+
 			if currentSequence.transitions[ i ].delay then
 				delayValue  = delayValue + currentSequence.transitions[ i ].delay
 			end
-			
+
 			-- if we are at least at the second transition in the table
 			if i > 1 then
-			
+
 				for j = i - 1, 1, -1 do
-					
+
 					local addedDelay = 0
 					local prevDelay = 0
-					
+
 					if currentSequence.transitions[ j ].delay then
 						addedDelay = currentSequence.transitions[ j ].delay
 					end
-					
+
 					if currentSequence.transitions[ j ].mode ~= "withPrevious" then
 						prevDelay = prevDelay + currentSequence.transitions[ j ].time
 					end
-					
+
 					prevDelay = prevDelay + addedDelay
 
 					delayValue = delayValue + prevDelay
 
-					
+
 				end
-				
+
 				if currentSequence.transitions[ i ].mode == "withPrevious" then
 					delayValue = delayValue - currentSequence.transitions[ i - 1 ].time
 					if currentSequence.transitions[ i - 1 ].delay then
 						delayValue = delayValue - currentSequence.transitions[ i - 1 ].delay
 					end
 				end
-				
+
 				--currentSequence.transitions[ i ].delay = delayValue
 				tranDelays[ i ] = delayValue
-			
+
 			end
-			
+
 		end
 
 	end
-	
+
 	-- assign the values from the temp table
 	for i = 1, #tranDelays do
 		currentSequence.transitions[ i ].delay = tranDelays[ i ]
 	end
-	
+
 end
 
 -----------------------------------------------------------------------------------------
@@ -761,15 +761,15 @@ lib.runSequence = function( sequenceName )
 			error( DEBUG_STRING .. " you have to pass a sequence name to a transition.runSequence call." )
 		end
 	end
-	
+
 	if nil == lib._sequenceTable[ sequenceName ] then
 		if lib.debugEnabled then
 			error( DEBUG_STRING .. " the sequence name passed to the transition.runSequence call does not exist." )
 		end
-	end	
-	
+	end
+
 	local currentSequence = lib._sequenceTable[ sequenceName ]
-	
+
 	for i, v in ipairs ( lib._sequenceTable[ sequenceName ].transitions ) do
 		v.mode = nil
 		lib.to( lib._sequenceTable[ sequenceName ].object, v)
@@ -791,9 +791,9 @@ lib.blink = function( targetObject, params )
 			error( DEBUG_STRING .. " you have to pass a target object to a transition.blink call." )
 		end
 	end
-	
+
 	local paramsTable = params or {}
-	
+
 	local actionTime = paramsTable.time or 500
 	local actionDelay = paramsTable.delay or 0
 	local actionEasing = paramsTable.transition or easing.linear
@@ -805,8 +805,8 @@ lib.blink = function( targetObject, params )
 	local actionOnRepeat = paramsTable.onRepeat or nil
 	local actionTag = paramsTable.tag or nil
 	local actionTime = actionTime or 500
-	
-	local addedTransition = lib.to( targetObject, 
+
+	local addedTransition = lib.to( targetObject,
 	{
 		delay = actionDelay,
 		time = actionTime * 0.5,
@@ -822,9 +822,9 @@ lib.blink = function( targetObject, params )
 		tag = actionTag
 	} )
 		--local addedTransition = lib.to( targetObject, { time = actionTime * 0.5, alpha = 0, transition="continuousLoop", iterations = -1 } )
-	
+
 	return addedTransition
-	
+
 end
 
 -----------------------------------------------------------------------------------------
@@ -837,12 +837,12 @@ lib.moveTo = function( targetObject, params )
 			error( DEBUG_STRING .. " you have to pass a target object to a transition.moveTo call." )
 		end
 	end
-	
+
 	local paramsTable = params or {}
 	local addedTransition = nil
 
 	if targetObject then
-	
+
 		local actionTime = paramsTable.time or 500
 		local actionDelay = paramsTable.delay or 0
 		local actionEasing = paramsTable.transition or easing.linear
@@ -852,13 +852,13 @@ lib.moveTo = function( targetObject, params )
 		local actionOnCancel = paramsTable.onCancel or nil
 		local actionOnStart = paramsTable.onStart or nil
 		local actionOnRepeat = paramsTable.onRepeat or nil
-		local actionXScale = paramsTable.xScale or targetObject.xScale
-		local actionYScale = paramsTable.yScale or targetObject.yScale
-		local actionAlpha = paramsTable.alpha or targetObject.alpha
+		local actionXScale = paramsTable.xScale or nil
+		local actionYScale = paramsTable.yScale or nil
+		local actionAlpha = paramsTable.alpha or nil
 		local actionTag = paramsTable.tag or nil
-		local actionX = paramsTable.x or targetObject.x
-		local actionY = paramsTable.y or targetObject.y
-		
+		local actionX = paramsTable.x or nil
+		local actionY = paramsTable.y or nil
+
 		addedTransition = lib.to( targetObject,
 		{
 			delay = actionDelay,
@@ -879,7 +879,7 @@ lib.moveTo = function( targetObject, params )
 		} )
 
 	end
-	
+
 	return addedTransition
 
   end
@@ -899,7 +899,7 @@ lib.moveBy = function( targetObject, params )
 	local addedTransition = nil
 
 	if targetObject then
-	
+
 		local actionTime = paramsTable.time or 500
 		local actionDelay = paramsTable.delay or 0
 		local actionEasing = paramsTable.transition or easing.linear
@@ -909,13 +909,13 @@ lib.moveBy = function( targetObject, params )
 		local actionOnCancel = paramsTable.onCancel or nil
 		local actionOnStart = paramsTable.onStart or nil
 		local actionOnRepeat = paramsTable.onRepeat or nil
-		local actionXScale = paramsTable.xScale or targetObject.xScale
-		local actionYScale = paramsTable.yScale or targetObject.yScale
-		local actionAlpha = paramsTable.alpha or targetObject.alpha
+		local actionXScale = paramsTable.xScale or nil
+		local actionYScale = paramsTable.yScale or nil
+		local actionAlpha = paramsTable.alpha or nil
 		local actionTag = paramsTable.tag or nil
 		local actionX = paramsTable.x or 0
 		local actionY = paramsTable.y or 0
-		
+
 		addedTransition = lib.to( targetObject,
 		{
 			delay = actionDelay,
@@ -936,7 +936,7 @@ lib.moveBy = function( targetObject, params )
 		} )
 
 	end
-	
+
 	return addedTransition
 
 end
@@ -951,12 +951,12 @@ lib.scaleTo = function( targetObject, params )
 			error( DEBUG_STRING .. " you have to pass a target object to a transition.scaleTo call." )
 		end
 	end
-	
+
 	local paramsTable = params or {}
 	local addedTransition = nil
 
 	if targetObject then
-	
+
 		local actionTime = paramsTable.time or 500
 		local actionDelay = paramsTable.delay or 0
 		local actionEasing = paramsTable.transition or easing.linear
@@ -966,13 +966,13 @@ lib.scaleTo = function( targetObject, params )
 		local actionOnCancel = paramsTable.onCancel or nil
 		local actionOnStart = paramsTable.onStart or nil
 		local actionOnRepeat = paramsTable.onRepeat or nil
-		local actionXScale = paramsTable.xScale or targetObject.xScale
-		local actionYScale = paramsTable.yScale or targetObject.yScale
-		local actionAlpha = paramsTable.alpha or targetObject.alpha
-		local actionX = paramsTable.x or targetObject.x
-		local actionY = paramsTable.y or targetObject.y
+		local actionXScale = paramsTable.xScale or nil
+		local actionYScale = paramsTable.yScale or nil
+		local actionAlpha = paramsTable.alpha or nil
+		local actionX = paramsTable.x or nil
+		local actionY = paramsTable.y or nil
 		local actionTag = paramsTable.tag or nil
-		
+
 		addedTransition = lib.to( targetObject,
 		{
 			delay = actionDelay,
@@ -1008,12 +1008,12 @@ lib.scaleBy = function( targetObject, params )
 			error( DEBUG_STRING .. " you have to pass a target object to a transition.scaleBy call." )
 		end
 	end
-	
+
 	local paramsTable = params or {}
 	local addedTransition = nil
 
 	if targetObject then
-	
+
 		local actionTime = paramsTable.time or 500
 		local actionDelay = paramsTable.delay or 0
 		local actionEasing = paramsTable.transition or easing.linear
@@ -1025,11 +1025,11 @@ lib.scaleBy = function( targetObject, params )
 		local actionOnRepeat = paramsTable.onRepeat or nil
 		local actionXScale = paramsTable.xScale or 0
 		local actionYScale = paramsTable.yScale or 0
-		local actionAlpha = paramsTable.alpha or targetObject.alpha
-		local actionX = paramsTable.x or targetObject.x
-		local actionY = paramsTable.y or targetObject.y
+		local actionAlpha = paramsTable.alpha or nil
+		local actionX = paramsTable.x or nil
+		local actionY = paramsTable.y or nil
 		local actionTag = paramsTable.tag or nil
-		
+
 		addedTransition = lib.to( targetObject,
 		{
 			delay = actionDelay,
@@ -1050,7 +1050,7 @@ lib.scaleBy = function( targetObject, params )
 		} )
 
 	end
-		
+
 	return addedTransition
 
 end
@@ -1065,7 +1065,7 @@ lib.fadeIn = function( targetObject, params )
 			error( DEBUG_STRING .. " you have to pass a target object to a transition.fadeIn call." )
 		end
 	end
-	
+
 	local paramsTable = params or {}
 	local addedTransition = nil
 
@@ -1080,10 +1080,10 @@ lib.fadeIn = function( targetObject, params )
 		local actionOnCancel = paramsTable.onCancel or nil
 		local actionOnStart = paramsTable.onStart or nil
 		local actionOnRepeat = paramsTable.onRepeat or nil
-		local actionX = paramsTable.x or targetObject.x
-		local actionY = paramsTable.y or targetObject.y
+		local actionX = paramsTable.x or nil
+		local actionY = paramsTable.y or nil
 		local actionTag = paramsTable.tag or nil
-		
+
 		addedTransition = lib.to( targetObject,
 		{
 			delay = actionDelay,
@@ -1102,9 +1102,9 @@ lib.fadeIn = function( targetObject, params )
 		} )
 
 	end
-	
+
 	return addedTransition
-	
+
 end
 
 -----------------------------------------------------------------------------------------
@@ -1117,12 +1117,12 @@ lib.fadeOut = function( targetObject, params )
 			error( DEBUG_STRING .. " you have to pass a target object to a transition.fadeIn call." )
 		end
 	end
-	
+
 	local paramsTable = params or {}
 	local addedTransition = nil
 
 	if targetObject then
-	
+
 		local actionTime = paramsTable.time or 500
 		local actionDelay = paramsTable.delay or 0
 		local actionEasing = paramsTable.transition or easing.linear
@@ -1132,10 +1132,10 @@ lib.fadeOut = function( targetObject, params )
 		local actionOnCancel = paramsTable.onCancel or nil
 		local actionOnStart = paramsTable.onStart or nil
 		local actionOnRepeat = paramsTable.onRepeat or nil
-		local actionX = paramsTable.x or targetObject.x
-		local actionY = paramsTable.y or targetObject.y
+		local actionX = paramsTable.x or nil
+		local actionY = paramsTable.y or nil
 		local actionTag = paramsTable.tag or nil
-		
+
 		addedTransition = lib.to( targetObject,
 		{
 			delay = actionDelay,
@@ -1154,14 +1154,14 @@ lib.fadeOut = function( targetObject, params )
 		} )
 
 	end
-	
+
 	return addedTransition
-	
+
 end
 
 -----------------------------------------------------------------------------------------
 -- [Deprecated]
--- 
+--
 -- dissolve( src, dst, duration, delayDuration )
 -- fades out src and fades in dst
 -----------------------------------------------------------------------------------------
