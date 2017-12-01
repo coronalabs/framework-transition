@@ -217,7 +217,7 @@ lib.to = function( targetObject, transitionParams )
 		end
 
 		local delay = transitionParams.delay
-		if type(delay) == "number" then
+		if type(delay) == "number" and delay ~= 0 then
 			tween._delay = delay
 			-- save off params: init after delay to minimize race conditions
 			local params = _copyTable( transitionParams )
