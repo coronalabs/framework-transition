@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Copyright (C) 2012 Corona Inc. All Rights Reserved.
+-- Code is MIT licensed; see https://www.coronalabs.com/links/code/license
 -- File: main.lua
 -- 
 -- Change the package.path and make it so we can require the "timer.lua" file from the root directory

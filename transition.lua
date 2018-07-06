@@ -1,10 +1,11 @@
 -------------------------------------------------------------------------------
+-- Corona Labs
 --
 -- transition.lua
 --
 -- Version: 2.0
 --
--- Copyright (C) 2013 Corona Labs Inc. All Rights Reserved.
+-- Code is MIT licensed; see https://www.coronalabs.com/links/code/license
 --
 -------------------------------------------------------------------------------
 
