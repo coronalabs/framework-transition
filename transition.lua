@@ -58,6 +58,9 @@ lib._numberKeys =
 
 lib.debugEnabled = false
 
+-- have pause(), resume() or cancel() API calls ignore empty (nil) reference
+lib.ignoreEmptyReference = false
+
 -----------------------------------------------------------------------------------------
 -- local functions
 -----------------------------------------------------------------------------------------
@@ -290,7 +293,7 @@ end
 -- pause( whatToPause )
 -- pauses the whatToPause transition object, sequence, tag or display object
 -----------------------------------------------------------------------------------------
-lib.pause = function( whatToPause )
+lib.pause = function( whatToPause, _pauseAll )
 
 	-- we use the targetType variable to establish how we iterate at the end of this method
 	local targetType = nil
@@ -310,7 +313,7 @@ lib.pause = function( whatToPause )
 	elseif "string" == type( whatToPause ) then
 		targetType = "tag"
 	-- pause all
-	elseif nil == whatToPause then
+	elseif nil == whatToPause and not lib.ignoreEmptyReference or _pauseAll then
 		targetType = "all"
 	end
 
@@ -365,7 +368,7 @@ end
 -- resume( whatToResume )
 -- resumes the whatToResume transition object, display object, sequence, tag or nil for all
 -----------------------------------------------------------------------------------------
-lib.resume = function( whatToResume )
+lib.resume = function( whatToResume, _resumeAll )
 
 	-- we use the targetType variable to establish how we iterate at the end of this method
 	local targetType = nil
@@ -385,7 +388,7 @@ lib.resume = function( whatToResume )
 	elseif "string" == type( whatToResume ) then
 		targetType = "tag"
 	-- pause all
-	elseif nil == whatToResume then
+	elseif nil == whatToResume and not lib.ignoreEmptyReference or _resumeAll then
 		targetType = "all"
 	end
 
@@ -440,7 +443,7 @@ end
 -- cancel( transitionObject )
 -- cancels the transitionObject transition
 -----------------------------------------------------------------------------------------
-lib.cancel = function( whatToCancel )
+lib.cancel = function( whatToCancel, _cancelAll )
 
 	-- if no transitions, then don't cancel anything
 	-- this is important because if one calls transition.cancel("tagname") followed by transition.to( obj, { tag = "tagname" } )
@@ -462,7 +465,7 @@ lib.cancel = function( whatToCancel )
 			cancelType = "tag"
 			cancelTarget = whatToCancel
 	-- cancel all
-	elseif nil == whatToCancel then
+	elseif nil == whatToCancel and not lib.ignoreEmptyReference or _cancelAll then
 		cancelType = "all"
 		cancelTarget = nil
 	end
@@ -499,6 +502,18 @@ lib.cancel = function( whatToCancel )
 		end
 	end
 
+end
+
+lib.pauseAll = function()
+	lib.pause( nil, true )
+end
+
+lib.resumeAll = function()
+	lib.resume( nil, true )
+end
+
+lib.cancelAll = function()
+	lib.cancel( nil, true )
 end
 
 -- function lib:enterFrame(), and then Runtime:addEventListener( "enterFrame", lib )
