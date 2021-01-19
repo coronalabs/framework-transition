@@ -208,6 +208,7 @@ lib.to = function( targetObject, transitionParams )
 		tween._duration = transitionParams.time or 500
 		tween.iterations = transitionParams.iterations or 1
 		tween.tag = transitionParams.tag or ""
+		tween._timeShift = transitionParams.timeShift or 0
 		tween._lastPausedTime = nil
 		tween._transition = transitionParams.transition or easing.linear
 		tween._onStart = Runtime.verifyListener( transitionParams.onStart, "onStart" )
@@ -577,7 +578,11 @@ function lib:enterFrame ( event )
 				delay = nil
 			end
 
-			if not delay then
+			-- define if object needs a single transition execution even if delayed
+			tween.needOneExecEvenIfDelayed = tween.needOneExecEvenIfDelayed == nil and delay ~= nil and delay > 0 and tween._timeShift ~= 0
+
+			if not delay or tween.needOneExecEvenIfDelayed then
+				tween.needOneExecEvenIfDelayed = false
 				local params = tween._delayParams
 				if params then
 					lib._initTween( tween, params )
@@ -586,7 +591,7 @@ function lib:enterFrame ( event )
 
 				local target = tween._target
 				local keysFinish = tween._keysFinish
-				local t = currentTime - tween._timeStart
+				local t = currentTime - tween._timeStart + tween._timeShift
 				if t < 0 then t = 0 end
 				local tMax = tween._duration
 				if t < tMax then
@@ -823,6 +828,7 @@ lib.blink = function( targetObject, params )
 	local actionOnRepeat = paramsTable.onRepeat or nil
 	local actionTag = paramsTable.tag or nil
 	local actionTime = actionTime or 500
+	local actionTimeShift = paramsTable.timeShift or nil
 
 	local addedTransition = lib.to( targetObject,
 	{
@@ -837,7 +843,8 @@ lib.blink = function( targetObject, params )
 		onStart = actionOnStart,
 		onRepeat = actionOnRepeat,
 		alpha = 0,
-		tag = actionTag
+		tag = actionTag,
+		timeShift = actionTimeShift,
 	} )
 		--local addedTransition = lib.to( targetObject, { time = actionTime * 0.5, alpha = 0, transition="continuousLoop", iterations = -1 } )
 
@@ -876,6 +883,7 @@ lib.moveTo = function( targetObject, params )
 		local actionTag = paramsTable.tag or nil
 		local actionX = paramsTable.x or nil
 		local actionY = paramsTable.y or nil
+		local actionTimeShift = paramsTable.timeShift or nil
 
 		addedTransition = lib.to( targetObject,
 		{
@@ -893,7 +901,8 @@ lib.moveTo = function( targetObject, params )
 			yScale = actionYScale,
 			x = actionX,
 			y = actionY,
-			tag = actionTag
+			tag = actionTag,
+			timeShift = actionTimeShift,
 		} )
 
 	end
@@ -933,6 +942,7 @@ lib.moveBy = function( targetObject, params )
 		local actionTag = paramsTable.tag or nil
 		local actionX = paramsTable.x or 0
 		local actionY = paramsTable.y or 0
+		local actionTimeShift = paramsTable.timeShift or nil
 
 		addedTransition = lib.to( targetObject,
 		{
@@ -950,7 +960,8 @@ lib.moveBy = function( targetObject, params )
 			yScale = actionYScale,
 			x = targetObject.x + actionX,
 			y = targetObject.y + actionY,
-			tag = actionTag
+			tag = actionTag,
+			timeShift = actionTimeShift,
 		} )
 
 	end
@@ -990,6 +1001,7 @@ lib.scaleTo = function( targetObject, params )
 		local actionX = paramsTable.x or nil
 		local actionY = paramsTable.y or nil
 		local actionTag = paramsTable.tag or nil
+		local actionTimeShift = paramsTable.timeShift or nil
 
 		addedTransition = lib.to( targetObject,
 		{
@@ -1007,7 +1019,8 @@ lib.scaleTo = function( targetObject, params )
 			yScale = actionYScale,
 			x = actionX,
 			y = actionY,
-			tag = actionTag
+			tag = actionTag,
+			timeShift = actionTimeShift,
 		} )
 
 	end
@@ -1047,6 +1060,7 @@ lib.scaleBy = function( targetObject, params )
 		local actionX = paramsTable.x or nil
 		local actionY = paramsTable.y or nil
 		local actionTag = paramsTable.tag or nil
+		local actionTimeShift = paramsTable.timeShift or nil
 
 		addedTransition = lib.to( targetObject,
 		{
@@ -1064,7 +1078,8 @@ lib.scaleBy = function( targetObject, params )
 			alpha = actionAlpha,
 			xScale = targetObject.xScale + actionXScale,
 			yScale = targetObject.yScale + actionYScale,
-			tag = actionTag
+			tag = actionTag,
+			timeShift = actionTimeShift,
 		} )
 
 	end
@@ -1101,6 +1116,7 @@ lib.fadeIn = function( targetObject, params )
 		local actionX = paramsTable.x or nil
 		local actionY = paramsTable.y or nil
 		local actionTag = paramsTable.tag or nil
+		local actionTimeShift = paramsTable.timeShift or nil
 
 		addedTransition = lib.to( targetObject,
 		{
@@ -1116,7 +1132,8 @@ lib.fadeIn = function( targetObject, params )
 			x = actionX,
 			y = actionY,
 			alpha = 1.0,
-			tag = actionTag
+			tag = actionTag,
+			timeShift = actionTimeShift,
 		} )
 
 	end
@@ -1153,6 +1170,7 @@ lib.fadeOut = function( targetObject, params )
 		local actionX = paramsTable.x or nil
 		local actionY = paramsTable.y or nil
 		local actionTag = paramsTable.tag or nil
+		local actionTimeShift = paramsTable.timeShift or nil
 
 		addedTransition = lib.to( targetObject,
 		{
@@ -1168,7 +1186,8 @@ lib.fadeOut = function( targetObject, params )
 			tag = actionTag,
 			x = actionX,
 			y = actionY,
-			alpha = 0.0
+			alpha = 0.0,
+			timeShift = actionTimeShift,
 		} )
 
 	end
