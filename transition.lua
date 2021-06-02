@@ -289,6 +289,13 @@ lib.from = function( targetObject, transitionParams )
 	return lib.to( targetObject, newParams )
 end
 
+
+lib.loop = function( targetObject, transitionParams )
+	local tween = lib.to(targetObject, transitionParams)
+	tween._isLoop = true
+	return tween
+end
+
 -----------------------------------------------------------------------------------------
 -- pause( whatToPause )
 -- pauses the whatToPause transition object, sequence, tag or display object
@@ -590,6 +597,13 @@ function lib:enterFrame ( event )
 				if t < 0 then t = 0 end
 				local tMax = tween._duration
 				if t < tMax then
+          if tween._isLoop then
+						t = t*2
+						if tMax < t then
+							t = tMax*2 - t
+						end
+					end
+
 					for k,v in pairs( tween._keysStart ) do
 						target[k] = tween._transition( t, tMax, v, keysFinish[k] - v )
 					end
@@ -597,7 +611,7 @@ function lib:enterFrame ( event )
 					-- the easing function easing.continuousLoop with infinite iterations cannot set the object keys to the finish values.
 					-- also, the last iteration of a transition with easing.continousLoop has to return the object to the start properties,
 					-- not to the end ones.
-					if tween._transition == easing.continuousLoop then
+					if tween._transition == easing.continuousLoop or tween._isLoop then
 						if tween.iterations == 1 then
 							for k, v in pairs( tween._keysStart ) do
 								target[k] = v
