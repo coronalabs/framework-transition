@@ -597,7 +597,7 @@ function lib:enterFrame ( event )
 				if t < 0 then t = 0 end
 				local tMax = tween._duration
 				if t < tMax then
-			if tween._isLoop then
+				if tween._isLoop then
 						t = t*2
 						if tMax < t then
 							t = tMax*2 - t
