@@ -609,7 +609,7 @@ function lib:enterFrame ( event )
 					end
 				else
 					-- the easing function easing.continuousLoop with infinite iterations cannot set the object keys to the finish values.
-					-- also, the last iteration of a transition with easing.continousLoop has to return the object to the start properties,
+					-- also, the last iteration of a transition with easing.continuousLoop has to return the object to the start properties,
 					-- not to the end ones.
 					if tween._transition == easing.continuousLoop or tween._isLoop then
 						if tween.iterations == 1 then
@@ -854,6 +854,51 @@ lib.blink = function( targetObject, params )
 		tag = actionTag
 	} )
 		--local addedTransition = lib.to( targetObject, { time = actionTime * 0.5, alpha = 0, transition="continuousLoop", iterations = -1 } )
+
+	return addedTransition
+
+end
+
+-----------------------------------------------------------------------------------------
+-- blinkContinuous( targetObject, actionDuration )
+-- blinks the targetObject with the transition duration actionDuration with continuous alpha-channel changes
+-----------------------------------------------------------------------------------------
+lib.blinkContinuous = function( targetObject, params )
+	if targetObject == nil then
+		if lib.debugEnabled then
+			error( DEBUG_STRING .. " you have to pass a target object to a transition.blinkContinuous call." )
+		end
+	end
+
+	local paramsTable = params or {}
+
+	local actionTime = paramsTable.time or 500
+	local actionDelay = paramsTable.delay or 0
+	local actionEasing = paramsTable.transition or easing.linear
+	local actionOnComplete = paramsTable.onComplete or nil
+	local actionOnPause = paramsTable.onPause or nil
+	local actionOnResume = paramsTable.onResume or nil
+	local actionOnCancel = paramsTable.onCancel or nil
+	local actionOnStart = paramsTable.onStart or nil
+	local actionOnRepeat = paramsTable.onRepeat or nil
+	local actionTag = paramsTable.tag or nil
+	local actionTime = actionTime or 500
+
+	local addedTransition = lib.to( targetObject,
+	{
+		delay = actionDelay,
+		time = actionTime * 0.5,
+		transition = easing.continuousLoop,
+		iterations = -1,
+		onComplete = actionOnComplete,
+		onPause = actionOnPause,
+		onResume = actionOnResume,
+		onCancel = actionOnCancel,
+		onStart = actionOnStart,
+		onRepeat = actionOnRepeat,
+		alpha = 0,
+		tag = actionTag
+	} )
 
 	return addedTransition
 
