@@ -54,6 +54,14 @@ r2:setFillColor( 0, 255, 0)
 r1.onComplete = onComplete
 r2.onComplete = onComplete
 
+local r3 = display.newRect( 1, 2*h, w, h )
+r3:setFillColor( 0, 0, 255 )
+transitionNew.blink( r3, { time = 3000 } )
+
+local r4 = display.newRect( 2 * w, 2 * h, w, h )
+r4:setFillColor( 0, 0, 255 )
+transitionNew.blinkContinuous( r4, { time = 3000 } )
+
 function touchHandler (event)
 	if (event.phase == "began") then
 		transitionNew.cancel( event.target.t )
