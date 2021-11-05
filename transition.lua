@@ -42,7 +42,7 @@ lib._hasEventListener = false
 -- reserved properties that cannot be transitioned
 lib._reservedProperties =
 {
-	time = true, delay = true, delta = true, iterations = true, tag = true, transition = true,
+	time = true, delay = true, timeShift = true, delta = true, iterations = true, tag = true, transition = true,
 	onComplete = true, onPause = true, onResume = true, onCancel = true, onRepeat = true, onStart = true
 }
 
@@ -586,10 +586,9 @@ function lib:enterFrame ( event )
 			end
 
 			-- define if object needs a single transition execution even if delayed
-			tween.needOneExecEvenIfDelayed = tween.needOneExecEvenIfDelayed == nil and delay ~= nil and delay > 0 and tween._timeShift ~= 0
+			tween.needOneExecEvenIfDelayed = tween.needOneExecEvenIfDelayed == nil and delay > 0 and tween._timeShift ~= 0
 
 			if not delay or tween.needOneExecEvenIfDelayed then
-				tween.needOneExecEvenIfDelayed = false
 				local params = tween._delayParams
 				if params then
 					lib._initTween( tween, params )
@@ -608,9 +607,14 @@ function lib:enterFrame ( event )
 							t = tMax*2 - t
 						end
 					end
-
 					for k,v in pairs( tween._keysStart ) do
 						target[k] = tween._transition( t, tMax, v, keysFinish[k] - v )
+					end
+					if tween.needOneExecEvenIfDelayed then
+						tween._pauseTriggered = true
+						tween._resumeTriggered = false
+						local listener = tween._onPause
+						Runtime.callListener( listener, "onPause", target )
 					end
 				else
 					-- the easing function easing.continuousLoop with infinite iterations cannot set the object keys to the finish values.
@@ -652,8 +656,8 @@ function lib:enterFrame ( event )
 						end
 					end
 
-
 				end
+				tween.needOneExecEvenIfDelayed = false
 			end
 
 		end
@@ -739,7 +743,7 @@ lib.newSequence = function( targetObject, params )
 			local delayValue = 0
 
 			if currentSequence.transitions[ i ].delay then
-				delayValue  = delayValue + currentSequence.transitions[ i ].delay
+				delayValue = delayValue + currentSequence.transitions[ i ].delay
 			end
 
 			-- if we are at least at the second transition in the table
@@ -968,7 +972,7 @@ lib.moveTo = function( targetObject, params )
 
 	return addedTransition
 
-  end
+end
 
 -----------------------------------------------------------------------------------------
 -- moveBy( targetObject, xCoord, yCoord, actionTime, actionDelay )

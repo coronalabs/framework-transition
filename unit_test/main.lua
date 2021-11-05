@@ -101,7 +101,8 @@ for i = 1, count do
 	r_i.anchorY = 1
 
 	-- example of shifted transition with delay
-	transitionNew.scaleTo(r_i, {yScale = 10, time = 10000, timeShift = i * 10000/count, transition = easing.outInBounce, delay = 3000})
+	r_i.i = i
+	transitionNew.scaleTo(r_i, {yScale = 10, time = 10000, timeShift = i * 10000/count, transition = easing.outInBounce, delay = 3000, onPause = function(obj) print("paused " .. obj.i) end})
 	
 	r_i:setFillColor(0, (i%2 == 1 and 0 or 1), (i%2 == 0 and 0 or 1))
 	arr_r[#arr_r+1] = r_i
